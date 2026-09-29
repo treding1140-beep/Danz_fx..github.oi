@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Danz_fx: Riset Arbitrase Latensi MT5</title>
+<meta name="description" content="Riset dan kode arbitrase latensi MT5 dua broker oleh Danz_fx: EA_Feed, EA_Exec, sinyal z-score, filter kualitas, dan prosedur uji.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#070B1A; --panel:#0E1530; --panel-2:#131C3F; --line:#22305A;
+  --text:#E8ECF8; --muted:#93A0C6;
+  --feed-a:#38BDF8; --feed-b:#A78BFA; --spread:#FBBF24; --ok:#34D399; --bad:#F87171;
+  --display:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{background:var(--ink);color:var(--text);font-family:var(--display);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(700px 500px at 85% -5%,rgba(56,189,248,.16),transparent 60%),
+  radial-gradient(600px 500px at -5% 35%,rgba(167,139,250,.14),transparent 60%),
+  radial-gradient(500px 400px at 90% 90%,rgba(251,191,36,.07),transparent 60%)}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--feed-a);outline-offset:3px;border-radius:6px}
+.wrap{width:min(1120px,92%);margin:0 auto}
+code,.mono{font-family:var(--mono)}
+
+nav{position:sticky;top:0;z-index:30;backdrop-filter:blur(14px);background:rgba(7,11,26,.72);border-bottom:1px solid rgba(34,48,90,.7)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-weight:800;font-size:1.15rem;letter-spacing:-.02em}
+.logo span{color:var(--feed-a)}
+.links{display:flex;gap:26px;font-size:.92rem;color:var(--muted)}
+.links a:hover{color:var(--text)}
+
+.btn{display:inline-flex;align-items:center;padding:12px 22px;border-radius:999px;font-weight:600;font-size:.94rem;transition:transform .2s,box-shadow .2s,background .2s,border-color .2s;cursor:pointer;font-family:inherit}
+.btn-main{background:linear-gradient(135deg,var(--feed-a),var(--feed-b));color:#050818;border:0}
+.btn-main:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(56,189,248,.3)}
+.btn-ghost{border:1px solid var(--line);color:var(--text);background:transparent}
+.btn-ghost:hover{background:var(--panel);border-color:var(--feed-a)}
+
+/* HERO */
+.hero{padding:84px 0 20px}
+.hero-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.status{display:inline-flex;align-items:center;gap:10px;padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-size:.82rem;color:var(--muted);background:rgba(14,21,48,.7)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%,100%{box-shadow:0 0 0 10px rgba(52,211,153,0)}}
+h1{font-size:clamp(2.2rem,5vw,3.7rem);line-height:1.1;letter-spacing:-.035em;font-weight:800;margin:22px 0 20px}
+.grad{background:linear-gradient(100deg,var(--feed-a) 10%,var(--feed-b) 55%,var(--spread) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);font-size:1.05rem;max-width:540px}
+.cta{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}
+
+.monitor{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:22px;padding:18px 18px 20px;box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04)}
+.mon-head{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-bottom:10px}
+.legend{display:flex;gap:16px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+canvas{width:100%;height:230px;display:block;border-radius:12px;background:rgba(7,11,26,.6)}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.readout div{background:rgba(7,11,26,.6);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.readout small{display:block;color:var(--muted);font-size:.72rem}
+.readout b{font-family:var(--mono);font-weight:500;font-size:1.02rem}
+.slider{margin-top:16px}
+.slider label{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:8px}
+.slider label b{font-family:var(--mono);color:var(--text);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--spread);height:6px;cursor:pointer}
+.note{font-size:.74rem;color:var(--muted);margin-top:10px}
+
+/* SECTIONS */
+section{padding:104px 0 0}
+.sec-title{font-size:clamp(1.7rem,3.2vw,2.4rem);letter-spacing:-.025em;font-weight:700;margin-bottom:14px}
+.sec-sub{color:var(--muted);max-width:620px;margin-bottom:44px}
+
+/* Pengetahuan: pernyataan besar dengan jalur warna */
+.facts{display:grid;gap:0;border-top:1px solid var(--line)}
+.fact{display:grid;grid-template-columns:1fr 1.1fr;gap:40px;padding:30px 0 30px 22px;border-bottom:1px solid var(--line);position:relative;align-items:baseline}
+.fact::before{content:"";position:absolute;left:0;top:30px;bottom:30px;width:3px;border-radius:3px;background:var(--feed-a)}
+.fact:nth-child(2)::before{background:var(--feed-b)}
+.fact:nth-child(3)::before{background:var(--spread)}
+.fact:nth-child(4)::before{background:var(--ok)}
+.fact:nth-child(5)::before{background:var(--bad)}
+.fact h3{font-size:clamp(1.15rem,2.2vw,1.55rem);letter-spacing:-.02em;line-height:1.3}
+.fact p{color:var(--muted);max-width:60ch}
+.fact p em{font-style:normal;color:var(--text)}
+
+/* Arsitektur */
+.arch{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;margin-bottom:40px}
+.node{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:24px}
+.node h3{font-size:1.1rem;margin-bottom:4px}
+.node .role{font-family:var(--mono);font-size:.8rem;margin-bottom:12px;display:block}
+.node p{color:var(--muted);font-size:.92rem}
+.node.a{border-color:rgba(56,189,248,.5)} .node.a .role{color:var(--feed-a)}
+.node.b{border-color:rgba(167,139,250,.5)} .node.b .role{color:var(--feed-b)}
+.pipe{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 18px;min-width:190px;text-align:center;position:relative}
+.pipe::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:linear-gradient(90deg,var(--feed-a),var(--feed-b));opacity:.7}
+.pipe span{position:relative;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:var(--mono);font-size:.74rem;color:var(--muted);line-height:1.5}
+.pipe span b{color:var(--spread);font-weight:500;display:block}
+.pipe .flow{position:absolute;left:0;top:calc(50% - 4px);width:10px;height:10px;border-radius:50%;background:var(--spread);box-shadow:0 0 14px var(--spread);animation:travel 2.4s linear infinite;padding:0;border:0}
+@keyframes travel{from{left:0;opacity:0}10%{opacity:1}90%{opacity:1}to{left:calc(100% - 10px);opacity:0}}
+
+/* Rumus */
+.formulas{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:56px}
+.fbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.fbox h4{font-size:.95rem;margin-bottom:10px}
+.fbox pre{font-family:var(--mono);font-size:.82rem;color:var(--text);white-space:pre-wrap;line-height:1.8}
+.fbox pre i{font-style:normal;color:var(--feed-a)}
+.fbox pre u{text-decoration:none;color:var(--spread)}
+.fbox p{color:var(--muted);font-size:.86rem;margin-top:10px}
+
+/* State machine interaktif */
+.sm-title{font-size:1.25rem;margin-bottom:6px}
+.states{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.states button{font-family:var(--mono);font-size:.82rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer;transition:all .2s}
+.states button:hover{border-color:var(--feed-a);color:var(--text)}
+.states button[aria-pressed=true]{background:rgba(56,189,248,.14);border-color:var(--feed-a);color:var(--feed-a)}
+.states button.halt[aria-pressed=true]{background:rgba(248,113,113,.12);border-color:var(--bad);color:var(--bad)}
+.state-detail{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;min-height:110px}
+.state-detail b{display:block;margin-bottom:6px}
+.state-detail p{color:var(--muted);max-width:70ch}
+
+/* Filter + parameter */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:56px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
+.card h3{font-size:1.1rem;margin-bottom:14px}
+.card ul{list-style:none;display:grid;gap:12px}
+.card li{color:var(--muted);font-size:.92rem;padding-left:18px;position:relative}
+.card li::before{content:"";position:absolute;left:0;top:.7em;width:7px;height:7px;border-radius:2px;background:var(--feed-b)}
+.card li b{color:var(--text);font-weight:600}
+.params{display:grid;gap:0}
+.params div{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid rgba(34,48,90,.7);font-size:.88rem}
+.params div:last-child{border-bottom:0}
+.params span{color:var(--muted)}
+.params code{color:var(--spread);font-size:.84rem;white-space:nowrap}
+.params .grp{display:block;color:var(--text);font-weight:600;padding:14px 0 4px;border-bottom:0}
+.params .grp:first-child{padding-top:0}
+
+/* Kode */
+.code-shell{background:#0A1027;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.code-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:6px}
+.tabs button{font-family:var(--mono);font-size:.82rem;color:var(--muted);background:transparent;border:1px solid transparent;border-radius:10px;padding:8px 14px;cursor:pointer}
+.tabs button:hover{color:var(--text)}
+.tabs button[aria-selected=true]{background:var(--ink);border-color:var(--line);color:var(--text)}
+.tabs button[data-t=feed][aria-selected=true]{color:var(--feed-a)}
+.tabs button[data-t=exec][aria-selected=true]{color:var(--feed-b)}
+.actions{display:flex;gap:8px;align-items:center}
+.actions .meta{font-family:var(--mono);font-size:.76rem;color:var(--muted);margin-right:6px}
+.mini{font-family:var(--mono);font-size:.78rem;color:var(--text);background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;transition:border-color .2s}
+.mini:hover{border-color:var(--feed-a)}
+.code-desc{padding:14px 18px;color:var(--muted);font-size:.9rem;border-bottom:1px solid var(--line);background:rgba(19,28,63,.4)}
+.pane[hidden]{display:none}
+.pane pre{max-height:620px;overflow:auto;padding:16px 0;font-family:var(--mono);font-size:.78rem;line-height:1.7;tab-size:3;counter-reset:ln}
+.pane pre code{display:block;width:max-content;min-width:100%}
+.l{display:block;padding:0 18px 0 64px;position:relative;white-space:pre}
+.l::before{counter-increment:ln;content:counter(ln);position:absolute;left:0;width:48px;text-align:right;color:#4A5A8C;user-select:none}
+.k{color:#C4A7FF}.t{color:#5EEAD4}.c{color:#6C7BA8;font-style:italic}.s{color:#FCD34D}.n{color:#FDA4AF}.f{color:#7DD3FC}.p{color:#F0ABFC}.q{color:#FDBA74}
+
+/* Uji coba: urutan nyata */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;counter-reset:s}
+.st{position:relative;padding:0 18px 0 0}
+.st::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--ink);border:1px solid var(--feed-a);color:var(--feed-a);font-family:var(--mono);font-size:.9rem;position:relative;z-index:1;margin-bottom:14px}
+.st::after{content:"";position:absolute;top:18px;left:36px;right:0;height:1px;background:linear-gradient(90deg,var(--feed-a),var(--line))}
+.st:last-child::after{display:none}
+.st h4{font-size:1rem}
+.st .when{font-family:var(--mono);font-size:.76rem;color:var(--spread);display:block;margin:2px 0 8px}
+.st p{color:var(--muted);font-size:.88rem}
+.stop{margin-top:34px;padding:18px 22px;border:1px dashed rgba(52,211,153,.5);border-radius:14px;background:rgba(52,211,153,.05);color:var(--muted);font-size:.94rem}
+.stop b{color:var(--ok)}
+
+/* Batas */
+.limits{border:1px solid rgba(248,113,113,.4);background:linear-gradient(180deg,rgba(248,113,113,.07),rgba(14,21,48,.6));border-radius:20px;padding:34px}
+.limits h2{font-size:clamp(1.4rem,2.6vw,1.9rem);letter-spacing:-.02em;margin-bottom:18px}
+.limits ul{list-style:none;display:grid;gap:14px;max-width:80ch}
+.limits li{color:var(--muted);padding-left:22px;position:relative}
+.limits li::before{content:"";position:absolute;left:0;top:.65em;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.limits li b{color:var(--text);font-weight:600}
+
+.sources{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sources a{display:block;padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);transition:border-color .2s,background .2s}
+.sources a:hover{border-color:var(--feed-b);background:var(--panel-2)}
+.sources b{display:block;font-size:.93rem;font-weight:600}
+.sources span{color:var(--muted);font-size:.84rem}
+
+footer{padding:90px 0 50px;text-align:center;color:var(--muted);font-size:.85rem}
+footer strong{color:var(--text)}
+
+@media (max-width:900px){
+  .hero-grid,.two,.formulas,.sources,.fact{grid-template-columns:1fr}
+  .fact{gap:10px}
+  .arch{grid-template-columns:1fr}
+  .pipe{min-height:110px;flex-direction:row;padding:20px 0}
+  .pipe::before{left:50%;right:auto;top:0;bottom:0;width:2px;height:auto;background:linear-gradient(180deg,var(--feed-a),var(--feed-b))}
+  .pipe .flow{display:none}
+  .steps{grid-template-columns:1fr 1fr;row-gap:28px}
+  .st:nth-child(2)::after{display:none}
+  .links{display:none}
+}
+@media (max-width:520px){
+  .hero{padding-top:52px}
+  .steps{grid-template-columns:1fr}
+  .st::after{display:none}
+  .readout b{font-size:.88rem}
+  .limits{padding:24px}
+  .actions .meta{display:none}
+  .pane pre{font-size:.72rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#top" class="logo">Danz<span>_fx</span></a>
+    <div class="links">
+      <a href="#pengetahuan">Pengetahuan</a>
+      <a href="#cara">Cara kerja</a>
+      <a href="#kode">Kode</a>
+      <a href="#uji">Uji coba</a>
+    </div>
+    <a href="#kode" class="btn btn-ghost">Lihat kode</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="status"><i class="dot"></i> Trading dimatikan secara default, observasi dulu</span>
+      <h1>Selisih harga baru berarti kalau <span class="grad">masih tersisa setelah biaya.</span></h1>
+      <p class="lead">Saya Danz_fx. Ini riset arbitrase latensi saya di MT5: satu terminal membaca harga broker cepat, satu lagi memantau broker lambat, dan sistem hanya bertindak kalau selisihnya lolos dari semua filter.</p>
+      <div class="cta">
+        <a href="#cara" class="btn btn-main">Baca cara kerjanya</a>
+        <a href="#kode" class="btn btn-ghost">Buka kodenya</a>
+      </div>
+    </div>
+
+    <div class="monitor" aria-label="Simulasi selisih harga dua feed akibat latensi">
+      <div class="mon-head">
+        <div class="legend">
+          <span><i style="background:var(--feed-a)"></i>Feed cepat</span>
+          <span><i style="background:var(--feed-b)"></i>Feed lambat</span>
+        </div>
+        <span>SIMULASI</span>
+      </div>
+      <canvas id="chart" role="img" aria-label="Grafik dua garis harga dengan jeda waktu"></canvas>
+      <div class="readout">
+        <div><small>Latensi</small><b id="rLat">120 ms</b></div>
+        <div><small>Selisih saat ini</small><b id="rSpread" style="color:var(--spread)">0.00</b></div>
+        <div><small>Sinyal</small><b id="rSignal">Menunggu</b></div>
+      </div>
+      <div class="slider">
+        <label for="lat">Geser untuk mengubah latensi <b id="latVal">120 ms</b></label>
+        <input type="range" id="lat" min="0" max="400" step="10" value="120">
+      </div>
+      <p class="note">Ilustrasi konsep, bukan data pasar nyata. Selisih di grafik ini belum dikurangi spread, komisi, dan slippage.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="pengetahuan">
+    <div class="wrap">
+      <h2 class="sec-title">Yang saya pelajari dari riset ini</h2>
+      <p class="sec-sub">Dirangkum dari diskusi praktisi di forum MQL5, dokumentasi MetaQuotes, dan artikel industri. Bagian yang tidak bisa dibuktikan saya tandai apa adanya.</p>
+
+      <div class="facts">
+        <div class="fact">
+          <h3>Selisih di layar belum tentu uang.</h3>
+          <p>Spread, komisi, slippage, dan kecepatan fill sering menghabiskan selisih sebelum order terisi. Praktisi di forum juga menekankan bahwa broker lambat pun harus punya <em>spread yang ketat</em> supaya strategi ini masuk akal.</p>
+        </div>
+        <div class="fact">
+          <h3>Ping rendah bukan berarti eksekusi cepat.</h3>
+          <p>Ada laporan trader dengan ping di bawah 1 ms yang order-nya tetap datang terlambat 9 detik, dengan eksekusi sekitar 300 ms. Jadi saya ukur tiga hal terpisah: <em>RTT jaringan, kesegaran quote, dan waktu dari kirim order sampai hasil</em>.</p>
+        </div>
+        <div class="fact">
+          <h3>Jam server dua broker tidak boleh dibandingkan langsung.</h3>
+          <p>Offset jamnya tidak diketahui. Karena itu kedua feed saya bandingkan lewat <em>urutan kedatangan di satu mesin</em> dengan jam monotonik yang sama, bukan lewat timestamp server.</p>
+        </div>
+        <div class="fact">
+          <h3>Lonjakan besar belum tentu data buruk.</h3>
+          <p>Pergerakan berita yang asli juga besar. Maka lonjakan tidak dibuang, tetapi <em>ditahan dulu dan diminta konfirmasi</em> sebelum boleh dianggap peluang.</p>
+        </div>
+        <div class="fact">
+          <h3>Tidak ada angka profit bulanan yang bisa dipercaya.</h3>
+          <p>Yang saya temukan hanya cerita "sempat untung lalu ketahuan", dan klaim 40% per bulan yang tidak bisa diverifikasi. Tidak ada satu pun laporan dengan statement dan bukti penarikan yang bertahan lama. Jadi ini saya perlakukan sebagai eksperimen, bukan penghasilan.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cara">
+    <div class="wrap">
+      <h2 class="sec-title">Cara sistemnya bekerja</h2>
+      <p class="sec-sub">Dua Expert Advisor di satu VPS. Yang satu hanya menyiarkan harga, yang lain menilai dan (kalau diizinkan) bertindak.</p>
+
+      <div class="arch">
+        <div class="node a">
+          <span class="role">EA_Feed.mq5</span>
+          <h3>Terminal broker cepat</h3>
+          <p>Membaca bid/ask, lalu menulis snapshot tiap ada perubahan harga atau tiap 500 ms sebagai detak jantung. Tidak pernah membuka order.</p>
+        </div>
+        <div class="pipe">
+          <span class="flow"></span>
+          <span><b>snapshot atomik</b>tulis .tmp lalu FileMove<br>di folder FILE_COMMON</span>
+        </div>
+        <div class="node b">
+          <span class="role">EA_Exec.mq5</span>
+          <h3>Terminal broker lambat</h3>
+          <p>Membaca snapshot, membandingkannya dengan harga lokal, menghitung sinyal, dan menjaga risiko. Secara default hanya mengamati.</p>
+        </div>
+      </div>
+
+      <div class="formulas">
+        <div class="fbox">
+          <h4>Baseline dan z-score</h4>
+<pre><i>d</i>  = mid_cepat − mid_lambat
+<i>μ</i>, <i>σ</i> = rata-rata dan simpangan <i>d</i>
+     dalam jendela bergulir 180 dtk
+<u>z</u>  = (d − μ) / max(σ, σ_floor)</pre>
+          <p>μ adalah selisih struktural normal antar broker. Selama ada kandidat, lonjakan, atau posisi terbuka, kalibrasi dibekukan supaya selisih nyata tidak ikut "dipelajari".</p>
+        </div>
+        <div class="fbox">
+          <h4>Selisih yang bisa dieksekusi</h4>
+<pre>beli : <u>fast_bid − μ − slow_ask</u>
+jual : <u>slow_bid − (fast_ask − μ)</u>
+
+sinyal jika |z| ≥ Z_masuk
+dan gap ≥ edge_bersih_min</pre>
+          <p>Yang dibandingkan adalah harga bid/ask, bukan harga tengah di chart, jadi spread kedua feed sudah ikut terhitung.</p>
+        </div>
+      </div>
+
+      <h3 class="sm-title">Siklus keputusan</h3>
+      <p class="sec-sub" style="margin-bottom:0">Klik satu status untuk melihat apa yang terjadi di dalamnya.</p>
+      <div class="states" id="states" role="group" aria-label="Status sistem">
+        <button data-s="0" aria-pressed="true">CALIBRATING</button>
+        <button data-s="1" aria-pressed="false">READY</button>
+        <button data-s="2" aria-pressed="false">CANDIDATE</button>
+        <button data-s="3" aria-pressed="false">IN_TRADE</button>
+        <button data-s="4" aria-pressed="false">COOLDOWN</button>
+        <button data-s="5" aria-pressed="false" class="halt">HALTED</button>
+      </div>
+      <div class="state-detail" id="stateDetail" aria-live="polite"></div>
+
+      <div class="two">
+        <div class="card">
+          <h3>Gerbang kualitas sebelum peluang dianggap nyata</h3>
+          <ul>
+            <li><b>Persistensi:</b> selisih harus bertahan minimal 250 ms dan melewati minimal 3 update feed cepat yang berbeda.</li>
+            <li><b>Quote tidak valid:</b> bid/ask menyilang atau nol langsung ditolak.</li>
+            <li><b>Spread:</b> kalau spread feed cepat atau lambat melebihi 30 poin, tidak ada sinyal.</li>
+            <li><b>Feed basi:</b> quote cepat lebih tua dari 750 ms, atau tidak ada snapshot baru 2 detik, berarti feed dianggap mati.</li>
+            <li><b>Quote lambat diam:</b> tidak berubah selama 1,5 detik, sinyal ditunda.</li>
+            <li><b>Lonjakan:</b> gerakan lebih dari 120 poin dalam 200 ms menunda sinyal selama 3 detik.</li>
+            <li><b>Sesi:</b> jam 01 sampai 23 waktu server, melewati jam rollover.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Parameter bawaan</h3>
+          <div class="params">
+            <span class="grp">Model</span>
+            <div><span>Jendela kalibrasi</span><code>180 dtk</code></div>
+            <div><span>Sampel minimum</span><code>300</code></div>
+            <div><span>Z masuk / keluar</span><code>3.5 / 1.0</code></div>
+            <div><span>Edge bersih minimum</span><code>15 poin</code></div>
+            <span class="grp">Keluar posisi</span>
+            <div><span>Stop loss</span><code>250 poin</code></div>
+            <div><span>Batas waktu tahan</span><code>45 dtk</code></div>
+            <div><span>Jeda setelah trade</span><code>20 dtk</code></div>
+            <span class="grp">Risiko</span>
+            <div><span>Risiko per trade</span><code>0,5% equity</code></div>
+            <div><span>Batas rugi harian</span><code>2%</code></div>
+            <div><span>Penjaga equity</span><code>10% dari puncak</code></div>
+            <div><span>Maks. trade per hari</span><code>10</code></div>
+            <div><span>Trading aktif</span><code>false</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="kode">
+    <div class="wrap">
+      <h2 class="sec-title">Kode lengkap</h2>
+      <p class="sec-sub">Dua file MQL5. Pasang EA_Feed di terminal broker cepat dan EA_Exec di terminal broker lambat, pada VPS dan user Windows yang sama.</p>
+
+      <div class="code-shell">
+        <div class="code-bar">
+          <div class="tabs" role="tablist">
+            <button role="tab" data-t="feed" aria-selected="true">EA_Feed.mq5</button>
+            <button role="tab" data-t="exec" aria-selected="false">EA_Exec.mq5</button>
+          </div>
+          <div class="actions">
+            <span class="meta" id="codeMeta"></span>
+            <button class="mini" id="copyBtn" type="button">Salin</button>
+            <a class="mini" id="dlBtn" href="EA_Feed.mq5" download>Unduh</a>
+          </div>
+        </div>
+        <div class="code-desc" id="codeDesc"></div>
+        <div class="pane" id="pane-feed" role="tabpanel"><pre tabindex="0"><code><span class="l"><span class="c">//+------------------------------------------------------------------+</span></span><span class="l"><span class="c">//| EA_Feed.mq5 — fast-broker side. Broadcasts ticks to EA_Exec      |</span></span><span class="l"><span class="c">//| via an atomic snapshot file in the common MQL5 files folder.     |</span></span><span class="l"><span class="c">//| Requirements: same VPS/machine AND same Windows user as EA_Exec. |</span></span><span class="l"><span class="c">//+------------------------------------------------------------------+</span></span><span class="l"><span class="p">#property</span> strict</span><span class="l"><span class="p">#property</span> version   <span class="s">"1.00"</span></span><span class="l"> </span><span class="l"><span class="k">input</span> <span class="t">string</span> InpSymbols     = <span class="s">""</span>;                      <span class="c">// Symbols to feed ("" = chart symbol), comma separated</span></span><span class="l"><span class="k">input</span> <span class="t">string</span> InpFileName    = <span class="s">"LA_feed_snapshot.bin"</span>;  <span class="c">// Snapshot file (FILE_COMMON)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpHeartbeatMs = <span class="n">500</span>;                     <span class="c">// Rewrite even if market quiet (ms)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpTimerMs     = <span class="n">5</span>;                       <span class="c">// Poll interval (ms)</span></span><span class="l"><span class="k">input</span> <span class="t">bool</span>   InpShowPanel   = <span class="k">true</span>;</span><span class="l"> </span><span class="l"><span class="p">#define</span> <span class="q">LA_MAGIC</span> <span class="n">0x4C413101</span></span><span class="l"><span class="p">#define</span> <span class="q">LA_MAXSYM</span> <span class="n">8</span></span><span class="l"> </span><span class="l"><span class="k">struct</span> <span class="t">HeadRec</span> { <span class="t">uint</span> magic; <span class="t">uint</span> seq; <span class="t">long</span> msLocal; <span class="t">int</span> nsym; };</span><span class="l"><span class="k">struct</span> <span class="t">SymRec</span>  { <span class="t">uchar</span> name[<span class="n">16</span>]; <span class="t">double</span> bid; <span class="t">double</span> ask; <span class="t">long</span> time_msc; };</span><span class="l"> </span><span class="l"><span class="t">string</span> g_names[<span class="q">LA_MAXSYM</span>];</span><span class="l"><span class="t">double</span> g_bid[<span class="q">LA_MAXSYM</span>], g_ask[<span class="q">LA_MAXSYM</span>];</span><span class="l"><span class="t">int</span>    g_n = <span class="n">0</span>;</span><span class="l"><span class="t">uint</span>   g_seq = <span class="n">0</span>, g_writes = <span class="n">0</span>, g_err = <span class="n">0</span>;</span><span class="l"><span class="t">ulong</span>  g_lastWrite = <span class="n">0</span>;</span><span class="l"> </span><span class="l"><span class="t">string</span> <span class="f">Trim</span>(<span class="t">string</span> s){ <span class="f">StringTrimLeft</span>(s); <span class="f">StringTrimRight</span>(s); <span class="k">return</span> s; }</span><span class="l"> </span><span class="l"><span class="t">int</span> <span class="f">OnInit</span>()</span><span class="l">{</span><span class="l">   <span class="t">string</span> list = InpSymbols;</span><span class="l">   <span class="k">if</span>(<span class="f">Trim</span>(list) == <span class="s">""</span>) list = _Symbol;</span><span class="l">   <span class="t">string</span> parts[];</span><span class="l">   <span class="t">int</span> k = <span class="f">StringSplit</span>(list, <span class="s">','</span>, parts);</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> i = <span class="n">0</span>; i &lt; k &amp;&amp; g_n &lt; <span class="q">LA_MAXSYM</span>; i++)</span><span class="l">   {</span><span class="l">      <span class="t">string</span> s = <span class="f">Trim</span>(parts[i]);</span><span class="l">      <span class="k">if</span>(s == <span class="s">""</span> || !<span class="f">SymbolSelect</span>(s, <span class="k">true</span>)) { <span class="f">Print</span>(<span class="s">"Skip symbol: "</span>, s); <span class="k">continue</span>; }</span><span class="l">      g_names[g_n++] = s;</span><span class="l">   }</span><span class="l">   <span class="k">if</span>(g_n == <span class="n">0</span>){ <span class="f">Print</span>(<span class="s">"No valid symbols"</span>); <span class="k">return</span> <span class="q">INIT_FAILED</span>; }</span><span class="l">   <span class="f">EventSetMillisecondTimer</span>(<span class="f">MathMax</span>(InpTimerMs, <span class="n">1</span>));</span><span class="l">   <span class="f">Print</span>(<span class="s">"EA_Feed started: "</span>, g_n, <span class="s">" symbol(s)"</span>);</span><span class="l">   <span class="k">return</span> <span class="q">INIT_SUCCEEDED</span>;</span><span class="l">}</span><span class="l"><span class="t">void</span> <span class="f">OnDeinit</span>(<span class="k">const</span> <span class="t">int</span> r){ <span class="f">EventKillTimer</span>(); <span class="f">Comment</span>(<span class="s">""</span>); }</span><span class="l"> </span><span class="l"><span class="t">bool</span> <span class="f">WriteSnapshot</span>(<span class="k">const</span> <span class="t">ulong</span> now)</span><span class="l">{</span><span class="l">   <span class="t">string</span> tmp = InpFileName + <span class="s">".tmp"</span>;</span><span class="l">   <span class="t">int</span> h = <span class="f">FileOpen</span>(tmp, <span class="q">FILE_COMMON</span>|<span class="q">FILE_WRITE</span>|<span class="q">FILE_BIN</span>);</span><span class="l">   <span class="k">if</span>(h == <span class="q">INVALID_HANDLE</span>){ g_err++; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="t">HeadRec</span> head; head.magic = <span class="q">LA_MAGIC</span>; head.seq = ++g_seq;</span><span class="l">   head.msLocal = (<span class="t">long</span>)now; head.nsym = g_n;</span><span class="l">   <span class="f">FileWriteStruct</span>(h, head);</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> i = <span class="n">0</span>; i &lt; g_n; i++)</span><span class="l">   {</span><span class="l">      <span class="t">SymRec</span> r;</span><span class="l">      <span class="f">StringToCharArray</span>(g_names[i], r.name, <span class="n">0</span>, <span class="n">15</span>);</span><span class="l">      r.bid = g_bid[i]; r.ask = g_ask[i];</span><span class="l">      <span class="t">MqlTick</span> t;</span><span class="l">      r.time_msc = <span class="f">SymbolInfoTick</span>(g_names[i], t) ? t.time_msc : <span class="n">0</span>;</span><span class="l">      <span class="f">FileWriteStruct</span>(h, r);</span><span class="l">   }</span><span class="l">   <span class="f">FileClose</span>(h);</span><span class="l">   <span class="c">// Atomic replace: readers never see a half-written file.</span></span><span class="l">   <span class="k">if</span>(!<span class="f">FileMove</span>(tmp, <span class="q">FILE_COMMON</span>, InpFileName, <span class="q">FILE_COMMON</span>|<span class="q">FILE_REWRITE</span>))</span><span class="l">   { g_err++; <span class="f">FileDelete</span>(tmp, <span class="q">FILE_COMMON</span>); <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">return</span> <span class="k">true</span>;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">void</span> <span class="f">OnTimer</span>()</span><span class="l">{</span><span class="l">   <span class="t">ulong</span> now = <span class="f">GetTickCount64</span>();</span><span class="l">   <span class="t">bool</span> changed = <span class="k">false</span>;</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> i = <span class="n">0</span>; i &lt; g_n; i++)</span><span class="l">   {</span><span class="l">      <span class="t">MqlTick</span> t;</span><span class="l">      <span class="k">if</span>(!<span class="f">SymbolInfoTick</span>(g_names[i], t)){ g_err++; <span class="k">continue</span>; }</span><span class="l">      <span class="k">if</span>(t.bid != g_bid[i] || t.ask != g_ask[i])</span><span class="l">      { g_bid[i] = t.bid; g_ask[i] = t.ask; changed = <span class="k">true</span>; }</span><span class="l">   }</span><span class="l">   <span class="k">if</span>(changed || now - g_lastWrite &gt;= (<span class="t">ulong</span>)InpHeartbeatMs)</span><span class="l">   {</span><span class="l">      <span class="k">if</span>(<span class="f">WriteSnapshot</span>(now)){ g_lastWrite = now; g_writes++; }</span><span class="l">   }</span><span class="l">   <span class="k">if</span>(InpShowPanel)</span><span class="l">   {</span><span class="l">      <span class="t">string</span> s = <span class="f">StringFormat</span>(<span class="s">"EA_Feed  | seq=%u  writes=%u  err=%u\n"</span>, g_seq, g_writes, g_err);</span><span class="l">      <span class="k">for</span>(<span class="t">int</span> i = <span class="n">0</span>; i &lt; g_n; i++)</span><span class="l">         s += <span class="f">StringFormat</span>(<span class="s">"%s  bid=%s  ask=%s\n"</span>, g_names[i],</span><span class="l">                           <span class="f">DoubleToString</span>(g_bid[i], _Digits),</span><span class="l">                           <span class="f">DoubleToString</span>(g_ask[i], _Digits));</span><span class="l">      <span class="f">Comment</span>(s);</span><span class="l">   }</span><span class="l">}</span></code></pre></div>
+        <div class="pane" id="pane-exec" role="tabpanel" hidden><pre tabindex="0"><code><span class="l"><span class="c">//+------------------------------------------------------------------+</span></span><span class="l"><span class="c">//| EA_Exec.mq5 — slow-broker side of the latency-arb research kit.  |</span></span><span class="l"><span class="c">//| Attach to the SLOW broker terminal on the symbol to trade.       |</span></span><span class="l"><span class="c">//| DEFAULT: trading OFF (observer/logger). Enable only after weeks  |</span></span><span class="l"><span class="c">//| of demo validation AND written broker permission.                |</span></span><span class="l"><span class="c">//+------------------------------------------------------------------+</span></span><span class="l"><span class="p">#property</span> strict</span><span class="l"><span class="p">#property</span> version   <span class="s">"1.00"</span></span><span class="l"><span class="p">#include</span> &lt;Trade\Trade.mqh&gt;</span><span class="l"> </span><span class="l"><span class="k">enum</span> <span class="t">ENUM_LA_STATE</span> { <span class="q">LA_CALIB</span>, <span class="q">LA_READY</span>, <span class="q">LA_CAND</span>, <span class="q">LA_TRADE</span>, <span class="q">LA_COOL</span>, <span class="q">LA_HALT</span> };</span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 1. Connection (fast feed) ==="</span></span><span class="l"><span class="k">input</span> <span class="t">string</span> InpFeedFile          = <span class="s">"LA_feed_snapshot.bin"</span>; <span class="c">// Snapshot file (same as EA_Feed)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpPollMs            = <span class="n">10</span>;      <span class="c">// Processing interval (ms)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpFeedMaxAgeMs      = <span class="n">750</span>;     <span class="c">// Fast quote older than this = stale</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpFeedFreezeMs      = <span class="n">2000</span>;    <span class="c">// No new snapshot seq this long = feed frozen</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpMaxPairMs         = <span class="n">150</span>;     <span class="c">// Max age of fast sample when pairing with slow tick</span></span><span class="l"><span class="k">input</span> <span class="t">string</span> InpFastSymbol        = <span class="s">""</span>;      <span class="c">// Fast symbol name if different from chart symbol</span></span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 2. Model &amp; auto-calibration ==="</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpCalibWindowSec    = <span class="n">180</span>;     <span class="c">// Rolling window for mean/sigma (sec)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpMinSamples        = <span class="n">300</span>;     <span class="c">// Min paired samples before trading allowed</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpSigmaFloorPts     = <span class="n">3.0</span>;     <span class="c">// Sigma floor (slow-symbol points)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpZEntry            = <span class="n">3.5</span>;     <span class="c">// |z| needed to arm a candidate</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpZExit             = <span class="n">1.0</span>;     <span class="c">// |z| back below this = converged</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpMinNetEdgePts     = <span class="n">15</span>;      <span class="c">// Min executable edge AFTER costs (points)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpCostBufferPts     = <span class="n">10</span>;      <span class="c">// Est. commission+slippage buffer (points)</span></span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 3. Opportunity quality filters ==="</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpPersistMs         = <span class="n">250</span>;     <span class="c">// Opportunity must survive this long (ms)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpPersistUpdates    = <span class="n">3</span>;       <span class="c">// ...across &gt;= N distinct fast updates</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpFastSpreadMaxPts  = <span class="n">30</span>;      <span class="c">// Fast spread cap (in slow-symbol points*)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpSlowSpreadMaxPts  = <span class="n">30</span>;      <span class="c">// Slow spread cap (points)  *5-digit FX majors</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpSpikeJumpPts      = <span class="n">120</span>;     <span class="c">// Fast move &gt; this within 200ms = spike</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpSpikeSuspendMs    = <span class="n">3000</span>;    <span class="c">// Suspend signal after spike (ms)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpSlowMaxAgeMs      = <span class="n">1500</span>;    <span class="c">// Slow quote unchanged this long = suspend</span></span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 4. Execution &amp; exits ==="</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpStopLossPts       = <span class="n">250</span>;     <span class="c">// Hard stop-loss (points)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpTakeProfitPts     = <span class="n">0</span>;       <span class="c">// Optional TP (0 = convergence/time exit)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpMaxHoldSec        = <span class="n">45</span>;      <span class="c">// Time stop (sec)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpConvergencePts    = <span class="n">3</span>;       <span class="c">// Close when remaining edge &lt;= this (points)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpCooldownSec       = <span class="n">20</span>;      <span class="c">// Pause after a trade closes (sec)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpMaxSlippagePts    = <span class="n">20</span>;      <span class="c">// Max deviation (points)</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpFailHaltCount     = <span class="n">3</span>;       <span class="c">// Consecutive failed orders -&gt; halt</span></span><span class="l"><span class="k">input</span> <span class="t">long</span>   InpMagic             = <span class="n">771880</span>;</span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 5. Risk management ==="</span></span><span class="l"><span class="k">input</span> <span class="t">bool</span>   InpTradingEnabled    = <span class="k">false</span>;   <span class="c">// false = observe/measure only (START HERE)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpRiskPercent       = <span class="n">0.5</span>;     <span class="c">// Risk % equity per trade (0 = fixed lot)</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpFixedLot          = <span class="n">0.01</span>;    <span class="c">// Fixed lot if RiskPercent = 0</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpMaxLot            = <span class="n">1.0</span>;     <span class="c">// Hard lot cap</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpDailyLossPct      = <span class="n">2.0</span>;     <span class="c">// Halt for the day at -X% of day-start equity</span></span><span class="l"><span class="k">input</span> <span class="t">double</span> InpEquityGuardPct    = <span class="n">10.0</span>;    <span class="c">// Permanent halt at -X% from session high-water</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpMaxTradesPerDay   = <span class="n">10</span>;      <span class="c">// Max entries per day</span></span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 6. Session filter (server time) ==="</span></span><span class="l"><span class="k">input</span> <span class="t">bool</span>   InpUseSession        = <span class="k">true</span>;</span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpStartHour         = <span class="n">1</span>;       <span class="c">// Skip rollover hour</span></span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpEndHour           = <span class="n">23</span>;</span><span class="l"> </span><span class="l"><span class="k">input</span> group <span class="s">"=== 7. Misc ==="</span></span><span class="l"><span class="k">input</span> <span class="t">bool</span>   InpVerboseLog        = <span class="k">false</span>;</span><span class="l"><span class="k">input</span> <span class="t">int</span>    InpPanelRefreshMs    = <span class="n">250</span>;</span><span class="l"> </span><span class="l"><span class="p">#define</span> <span class="q">RING_N</span> <span class="n">256</span></span><span class="l"><span class="p">#define</span> <span class="q">DMAX</span>   <span class="n">4096</span></span><span class="l"><span class="k">struct</span> <span class="t">Sample</span> { <span class="t">ulong</span> ms; <span class="t">double</span> bid; <span class="t">double</span> ask; <span class="t">double</span> mid; <span class="t">uint</span> seq; };</span><span class="l"> </span><span class="l"><span class="t">Sample</span> g_f[<span class="q">RING_N</span>]; <span class="t">int</span> g_fHead=<span class="n">0</span>, g_fCount=<span class="n">0</span>;      <span class="c">// fast feed ring</span></span><span class="l"><span class="t">Sample</span> g_s[<span class="q">RING_N</span>]; <span class="t">int</span> g_sHead=<span class="n">0</span>, g_sCount=<span class="n">0</span>;      <span class="c">// slow feed ring</span></span><span class="l"><span class="t">double</span> g_dV[<span class="q">DMAX</span>];  <span class="t">ulong</span> g_dM[<span class="q">DMAX</span>]; <span class="t">int</span> g_dHead=<span class="n">0</span>, g_dCount=<span class="n">0</span>; <span class="c">// paired d ring</span></span><span class="l"> </span><span class="l"><span class="t">CTrade</span> g_trade;</span><span class="l"><span class="t">ENUM_LA_STATE</span> g_state = <span class="q">LA_CALIB</span>;</span><span class="l"><span class="t">string</span> g_fastName = <span class="s">""</span>, g_halt = <span class="s">""</span>, g_note = <span class="s">""</span>;</span><span class="l"><span class="t">double</span> g_point = <span class="n">0</span>, g_mu = <span class="n">0</span>, g_sd = <span class="n">0</span>;</span><span class="l"><span class="t">int</span>    g_modelN = <span class="n">0</span>;</span><span class="l"><span class="t">uint</span>   g_lastSeq = <span class="n">0</span>;          <span class="t">ulong</span> g_lastSeqMs = <span class="n">0</span>;</span><span class="l"><span class="t">ulong</span>  g_lastSlowChange = <span class="n">0</span>;   <span class="t">double</span> g_lastSlowBid = <span class="n">0</span>, g_lastSlowAsk = <span class="n">0</span>;</span><span class="l"><span class="t">ulong</span>  g_spikeUntil = <span class="n">0</span>;</span><span class="l"><span class="t">int</span>    g_candDir = <span class="n">0</span>;          <span class="t">ulong</span> g_candStart = <span class="n">0</span>;</span><span class="l"><span class="t">uint</span>   g_candSeq0 = <span class="n">0</span>;         <span class="t">int</span>   g_candUpd = <span class="n">0</span>;</span><span class="l"><span class="t">double</span> g_candGap = <span class="n">0</span>, g_candZ = <span class="n">0</span>;</span><span class="l"><span class="t">ulong</span>  g_lastClose = <span class="n">0</span>;        <span class="t">int</span>   g_tradesToday = <span class="n">0</span>, g_fails = <span class="n">0</span>;</span><span class="l"><span class="t">double</span> g_dayStartEq = <span class="n">0</span>, g_hwmEq = <span class="n">0</span>;</span><span class="l"><span class="t">datetime</span> g_dayStart = <span class="n">0</span>;       <span class="t">int</span>   g_doy = -<span class="n">1</span>;</span><span class="l"><span class="t">ulong</span>  g_lastModelMs = <span class="n">0</span>, g_lastPanelMs = <span class="n">0</span>;</span><span class="l"> </span><span class="l"><span class="c">//---------------------------- helpers -------------------------------</span></span><span class="l"><span class="t">ulong</span> <span class="f">Now</span>(){ <span class="k">return</span> <span class="f">GetTickCount64</span>(); }</span><span class="l"><span class="t">double</span> <span class="f">PointS</span>(){ <span class="k">return</span> g_point; }</span><span class="l"> </span><span class="l"><span class="t">void</span> <span class="f">PushF</span>(<span class="k">const</span> <span class="t">ulong</span> ms, <span class="k">const</span> <span class="t">double</span> b, <span class="k">const</span> <span class="t">double</span> a, <span class="k">const</span> <span class="t">uint</span> seq)</span><span class="l">{</span><span class="l">   g_fHead=(g_fHead+<span class="n">1</span>)%<span class="q">RING_N</span>;</span><span class="l">   g_f[g_fHead].ms=ms; g_f[g_fHead].bid=b; g_f[g_fHead].ask=a;</span><span class="l">   g_f[g_fHead].mid=(b+a)/<span class="n">2.0</span>; g_f[g_fHead].seq=seq;</span><span class="l">   <span class="k">if</span>(g_fCount&lt;<span class="q">RING_N</span>) g_fCount++;</span><span class="l">}</span><span class="l"><span class="t">void</span> <span class="f">PushS</span>(<span class="k">const</span> <span class="t">ulong</span> ms, <span class="k">const</span> <span class="t">double</span> b, <span class="k">const</span> <span class="t">double</span> a)</span><span class="l">{</span><span class="l">   g_sHead=(g_sHead+<span class="n">1</span>)%<span class="q">RING_N</span>;</span><span class="l">   g_s[g_sHead].ms=ms; g_s[g_sHead].bid=b; g_s[g_sHead].ask=a;</span><span class="l">   g_s[g_sHead].mid=(b+a)/<span class="n">2.0</span>; g_s[g_sHead].seq=<span class="n">0</span>;</span><span class="l">   <span class="k">if</span>(g_sCount&lt;<span class="q">RING_N</span>) g_sCount++;</span><span class="l">}</span><span class="l"><span class="t">double</span> <span class="f">FastBid</span>(){ <span class="k">return</span> g_f[g_fHead].bid; }</span><span class="l"><span class="t">double</span> <span class="f">FastAsk</span>(){ <span class="k">return</span> g_f[g_fHead].ask; }</span><span class="l"><span class="t">double</span> <span class="f">FastMid</span>(){ <span class="k">return</span> g_f[g_fHead].mid; }</span><span class="l"><span class="t">double</span> <span class="f">SlowBid</span>(){ <span class="k">return</span> g_s[g_sHead].bid; }</span><span class="l"><span class="t">double</span> <span class="f">SlowAsk</span>(){ <span class="k">return</span> g_s[g_sHead].ask; }</span><span class="l"><span class="t">double</span> <span class="f">SlowMid</span>(){ <span class="k">return</span> g_s[g_sHead].mid; }</span><span class="l"> </span><span class="l"><span class="c">// newest-first iteration helper</span></span><span class="l"><span class="t">int</span> <span class="f">RingIdx</span>(<span class="k">const</span> <span class="t">int</span> head, <span class="k">const</span> <span class="t">int</span> back){ <span class="k">return</span> ((head-back)%<span class="q">RING_N</span>+<span class="q">RING_N</span>)%<span class="q">RING_N</span>; }</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- feed reader ----------------------------</span></span><span class="l"><span class="t">void</span> <span class="f">ReadFeed</span>()</span><span class="l">{</span><span class="l">   <span class="t">int</span> h = <span class="f">FileOpen</span>(InpFeedFile, <span class="q">FILE_COMMON</span>|<span class="q">FILE_READ</span>|<span class="q">FILE_BIN</span>|</span><span class="l">                    <span class="q">FILE_SHARE_READ</span>|<span class="q">FILE_SHARE_WRITE</span>|<span class="q">FILE_SHARE_DELETE</span>);</span><span class="l">   <span class="k">if</span>(h == <span class="q">INVALID_HANDLE</span>) <span class="k">return</span>;</span><span class="l">   <span class="t">HeadRec</span> head;</span><span class="l">   <span class="k">if</span>(<span class="f">FileReadStruct</span>(h, head) &amp;&amp; head.magic == <span class="n">0x4C413101</span> &amp;&amp; head.nsym &gt; <span class="n">0</span> &amp;&amp; head.nsym &lt;= <span class="n">8</span>)</span><span class="l">   {</span><span class="l">      <span class="k">if</span>(head.seq != g_lastSeq)</span><span class="l">      {</span><span class="l">         <span class="k">for</span>(<span class="t">int</span> i = <span class="n">0</span>; i &lt; head.nsym; i++)</span><span class="l">         {</span><span class="l">            <span class="t">SymRec</span> r;</span><span class="l">            <span class="k">if</span>(!<span class="f">FileReadStruct</span>(h, r)) <span class="k">break</span>;</span><span class="l">            <span class="t">string</span> nm = <span class="f">CharArrayToString</span>(r.name);</span><span class="l">            <span class="k">if</span>(nm == g_fastName &amp;&amp; r.bid &gt; <span class="n">0</span> &amp;&amp; r.ask &gt; <span class="n">0</span>)</span><span class="l">            {</span><span class="l">               <span class="f">PushF</span>((<span class="t">ulong</span>)head.msLocal, r.bid, r.ask, head.seq);</span><span class="l">               g_lastSeq = head.seq; g_lastSeqMs = <span class="f">Now</span>();</span><span class="l">               <span class="f">TryPairAndAppend</span>();               <span class="c">// sample tied to fast updates</span></span><span class="l">            }</span><span class="l">         }</span><span class="l">      }</span><span class="l">   }</span><span class="l">   <span class="f">FileClose</span>(h);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">// Pair latest slow tick with the newest fast sample; append d = fastMid - slowMid</span></span><span class="l"><span class="t">void</span> <span class="f">TryPairAndAppend</span>()</span><span class="l">{</span><span class="l">   <span class="t">ulong</span> now = <span class="f">Now</span>();</span><span class="l">   <span class="k">if</span>(g_sCount == <span class="n">0</span> || g_fCount == <span class="n">0</span>) <span class="k">return</span>;</span><span class="l">   <span class="k">if</span>(now - g_f[g_fHead].ms &gt; (<span class="t">ulong</span>)InpMaxPairMs) <span class="k">return</span>;      <span class="c">// fast too old to pair</span></span><span class="l">   <span class="k">if</span>(now &lt; g_spikeUntil) <span class="k">return</span>;                                <span class="c">// spike suspension</span></span><span class="l">   <span class="k">if</span>(g_state == <span class="q">LA_CAND</span> || g_state == <span class="q">LA_TRADE</span>) <span class="k">return</span>;         <span class="c">// freeze learning</span></span><span class="l">   <span class="t">double</span> d = <span class="f">FastMid</span>() - <span class="f">SlowMid</span>();</span><span class="l">   g_dHead = (g_dHead+<span class="n">1</span>)%<span class="q">DMAX</span>; g_dV[g_dHead] = d; g_dM[g_dHead] = now;</span><span class="l">   <span class="k">if</span>(g_dCount &lt; <span class="q">DMAX</span>) g_dCount++;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- model update ---------------------------</span></span><span class="l"><span class="t">int</span> <span class="f">UpdateModel</span>(<span class="k">const</span> <span class="t">ulong</span> now)</span><span class="l">{</span><span class="l">   <span class="t">ulong</span> win = (<span class="t">ulong</span>)InpCalibWindowSec*<span class="n">1000</span>;</span><span class="l">   <span class="t">double</span> sum=<span class="n">0</span>, sumsq=<span class="n">0</span>; <span class="t">int</span> n=<span class="n">0</span>;</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> k = <span class="n">0</span>; k &lt; g_dCount; k++)</span><span class="l">   {</span><span class="l">      <span class="t">int</span> i = <span class="f">RingIdx</span>(g_dHead, k);</span><span class="l">      <span class="k">if</span>(now - g_dM[i] &gt; win) <span class="k">break</span>;</span><span class="l">      sum += g_dV[i]; sumsq += g_dV[i]*g_dV[i]; n++;</span><span class="l">   }</span><span class="l">   g_modelN = n;</span><span class="l">   <span class="k">if</span>(n &gt;= <span class="n">10</span>)</span><span class="l">   {</span><span class="l">      g_mu = sum/n;</span><span class="l">      <span class="t">double</span> var = <span class="f">MathMax</span>(sumsq/n - g_mu*g_mu, <span class="n">0.0</span>);</span><span class="l">      g_sd = <span class="f">MathSqrt</span>(var);</span><span class="l">   }</span><span class="l">   <span class="k">return</span> n;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- health &amp; gates -------------------------</span></span><span class="l"><span class="t">bool</span> <span class="f">FeedsHealthy</span>(<span class="t">string</span> &amp;why)</span><span class="l">{</span><span class="l">   <span class="t">ulong</span> now = <span class="f">Now</span>();</span><span class="l">   <span class="k">if</span>(g_fCount == <span class="n">0</span> || g_sCount == <span class="n">0</span>){ why=<span class="s">"no data"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(now - g_f[g_fHead].ms &gt; (<span class="t">ulong</span>)InpFeedMaxAgeMs){ why=<span class="s">"fast feed stale"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(now - g_lastSeqMs  &gt; (<span class="t">ulong</span>)InpFeedFreezeMs)  { why=<span class="s">"fast feed frozen"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(now - g_lastSlowChange &gt; (<span class="t">ulong</span>)InpSlowMaxAgeMs){ why=<span class="s">"slow quote flat/stale"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="t">double</span> fSpread=(<span class="f">FastAsk</span>()-<span class="f">FastBid</span>())/g_point, sSpread=(<span class="f">SlowAsk</span>()-<span class="f">SlowBid</span>())/g_point;</span><span class="l">   <span class="k">if</span>(fSpread &gt; InpFastSpreadMaxPts){ why=<span class="s">"fast spread too wide"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(sSpread &gt; InpSlowSpreadMaxPts){ why=<span class="s">"slow spread too wide"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(<span class="f">FastBid</span>()&lt;=<span class="n">0</span> || <span class="f">SlowBid</span>()&lt;=<span class="n">0</span> || <span class="f">FastAsk</span>()&lt;<span class="f">FastBid</span>() || <span class="f">SlowAsk</span>()&lt;<span class="f">SlowBid</span>())</span><span class="l">   { why=<span class="s">"invalid/crossed quote"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">return</span> <span class="k">true</span>;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">bool</span> <span class="f">FastSpike</span>(<span class="k">const</span> <span class="t">ulong</span> now)   <span class="c">// big fast move within 200ms =&gt; suspect spike/news</span></span><span class="l">{</span><span class="l">   <span class="t">double</span> mx=-<span class="q">DBL_MAX</span>, mn=<span class="q">DBL_MAX</span>;</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> k = <span class="n">0</span>; k &lt; g_fCount; k++)</span><span class="l">   {</span><span class="l">      <span class="t">int</span> i = <span class="f">RingIdx</span>(g_fHead, k);</span><span class="l">      <span class="k">if</span>(now - g_f[i].ms &gt; <span class="n">200</span>) <span class="k">break</span>;</span><span class="l">      mx = <span class="f">MathMax</span>(mx, g_f[i].mid); mn = <span class="f">MathMin</span>(mn, g_f[i].mid);</span><span class="l">   }</span><span class="l">   <span class="k">return</span> (mx-mn) &gt; InpSpikeJumpPts*g_point;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">bool</span> <span class="f">SessionOK</span>()</span><span class="l">{</span><span class="l">   <span class="k">if</span>(!InpUseSession) <span class="k">return</span> <span class="k">true</span>;</span><span class="l">   <span class="t">MqlDateTime</span> dt; <span class="f">TimeToStruct</span>(<span class="f">TimeCurrent</span>(), dt);</span><span class="l">   <span class="k">return</span> (dt.hour &gt;= InpStartHour &amp;&amp; dt.hour &lt; InpEndHour);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">double</span> <span class="f">DayRealizedPL</span>()</span><span class="l">{</span><span class="l">   <span class="t">double</span> pl = <span class="n">0</span>;</span><span class="l">   <span class="k">if</span>(!<span class="f">HistorySelect</span>(g_dayStart, <span class="f">TimeCurrent</span>()+<span class="n">60</span>)) <span class="k">return</span> <span class="n">0</span>;</span><span class="l">   <span class="k">for</span>(<span class="t">int</span> i = <span class="f">HistoryDealsTotal</span>()-<span class="n">1</span>; i &gt;= <span class="n">0</span>; i--)</span><span class="l">   {</span><span class="l">      <span class="t">ulong</span> tk = <span class="f">HistoryDealGetTicket</span>(i);</span><span class="l">      <span class="k">if</span>(tk == <span class="n">0</span>) <span class="k">continue</span>;</span><span class="l">      <span class="k">if</span>(<span class="f">HistoryDealGetInteger</span>(tk, <span class="q">DEAL_MAGIC</span>) != InpMagic) <span class="k">continue</span>;</span><span class="l">      pl += <span class="f">HistoryDealGetDouble</span>(tk, <span class="q">DEAL_PROFIT</span>)</span><span class="l">          + <span class="f">HistoryDealGetDouble</span>(tk, <span class="q">DEAL_SWAP</span>)</span><span class="l">          + <span class="f">HistoryDealGetDouble</span>(tk, <span class="q">DEAL_COMMISSION</span>);</span><span class="l">   }</span><span class="l">   <span class="k">return</span> pl;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">bool</span> <span class="f">RiskOK</span>(<span class="t">string</span> &amp;why)   <span class="c">// daily loss, equity guard, caps</span></span><span class="l">{</span><span class="l">   <span class="t">double</span> eq = <span class="f">AccountInfoDouble</span>(<span class="q">ACCOUNT_EQUITY</span>);</span><span class="l">   g_hwmEq = <span class="f">MathMax</span>(g_hwmEq, eq);</span><span class="l">   <span class="k">if</span>(eq &lt; g_hwmEq*(<span class="n">1.0</span> - InpEquityGuardPct/<span class="n">100.0</span>))</span><span class="l">   { g_halt = <span class="s">"EQUITY GUARD hit — manual restart required"</span>; g_state = <span class="q">LA_HALT</span>; why=g_halt; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="t">double</span> dayPL = <span class="f">DayRealizedPL</span>() + <span class="f">FloatingPL</span>();</span><span class="l">   <span class="k">if</span>(g_dayStartEq &gt; <span class="n">0</span> &amp;&amp; dayPL &lt; -g_dayStartEq*InpDailyLossPct/<span class="n">100.0</span>)</span><span class="l">   { g_halt = <span class="s">"daily loss stop"</span>; g_state = <span class="q">LA_HALT</span>; why=g_halt; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">if</span>(g_tradesToday &gt;= InpMaxTradesPerDay){ why=<span class="s">"max trades/day"</span>; <span class="k">return</span> <span class="k">false</span>; }</span><span class="l">   <span class="k">return</span> <span class="k">true</span>;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">double</span> <span class="f">FloatingPL</span>()</span><span class="l">{</span><span class="l">   <span class="k">if</span>(!<span class="f">PositionSelect</span>(_Symbol)) <span class="k">return</span> <span class="n">0</span>;</span><span class="l">   <span class="k">if</span>(<span class="f">PositionGetInteger</span>(<span class="q">POSITION_MAGIC</span>) != InpMagic) <span class="k">return</span> <span class="n">0</span>;</span><span class="l">   <span class="k">return</span> <span class="f">PositionGetDouble</span>(<span class="q">POSITION_PROFIT</span>) + <span class="f">PositionGetDouble</span>(<span class="q">POSITION_SWAP</span>);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- sizing &amp; orders ------------------------</span></span><span class="l"><span class="t">double</span> <span class="f">NormalizeLot</span>(<span class="t">double</span> lot)</span><span class="l">{</span><span class="l">   <span class="t">double</span> minL = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_VOLUME_MIN</span>);</span><span class="l">   <span class="t">double</span> maxL = <span class="f">MathMin</span>(<span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_VOLUME_MAX</span>), InpMaxLot);</span><span class="l">   <span class="t">double</span> step = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_VOLUME_STEP</span>);</span><span class="l">   <span class="k">if</span>(step &gt; <span class="n">0</span>) lot = <span class="f">MathFloor</span>(lot/step)*step;</span><span class="l">   <span class="k">return</span> <span class="f">MathMin</span>(<span class="f">MathMax</span>(lot, minL), maxL);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">double</span> <span class="f">CalcLot</span>()</span><span class="l">{</span><span class="l">   <span class="k">if</span>(InpRiskPercent &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="f">NormalizeLot</span>(InpFixedLot);</span><span class="l">   <span class="t">double</span> riskMoney = <span class="f">AccountInfoDouble</span>(<span class="q">ACCOUNT_EQUITY</span>)*InpRiskPercent/<span class="n">100.0</span>;</span><span class="l">   <span class="t">double</span> tickSize  = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_TRADE_TICK_SIZE</span>);</span><span class="l">   <span class="t">double</span> tickValue = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_TRADE_TICK_VALUE</span>);</span><span class="l">   <span class="k">if</span>(tickSize &lt;= <span class="n">0</span> || tickValue &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="f">NormalizeLot</span>(InpFixedLot);</span><span class="l">   <span class="t">double</span> lossPerLot = InpStopLossPts*g_point/tickSize*tickValue;</span><span class="l">   <span class="k">if</span>(lossPerLot &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="f">NormalizeLot</span>(InpFixedLot);</span><span class="l">   <span class="k">return</span> <span class="f">NormalizeLot</span>(riskMoney/lossPerLot);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- signal core ----------------------------</span></span><span class="l"><span class="c">// gap measured on executable prices, with structural offset mu removed:</span></span><span class="l"><span class="c">//   buy : fast_bid - mu - slow_ask    (slow is stale LOW  -&gt; rises)</span></span><span class="l"><span class="c">//   sell: slow_bid - (fast_ask - mu)  (slow is stale HIGH -&gt; falls)</span></span><span class="l"><span class="t">bool</span> <span class="f">SignalFor</span>(<span class="k">const</span> <span class="t">int</span> dir, <span class="t">double</span> &amp;gapPts, <span class="t">double</span> &amp;z)</span><span class="l">{</span><span class="l">   <span class="k">if</span>(g_sd &lt;= <span class="n">0</span> &amp;&amp; InpSigmaFloorPts &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="k">false</span>;</span><span class="l">   <span class="t">double</span> d = <span class="f">FastMid</span>() - <span class="f">SlowMid</span>();</span><span class="l">   <span class="t">double</span> sigma = <span class="f">MathMax</span>(g_sd, InpSigmaFloorPts*g_point);</span><span class="l">   z = (d - g_mu)/sigma;</span><span class="l">   <span class="k">if</span>(dir &gt; <span class="n">0</span>)</span><span class="l">   {</span><span class="l">      gapPts = (<span class="f">FastBid</span>() - g_mu - <span class="f">SlowAsk</span>())/g_point;</span><span class="l">      <span class="k">return</span> (z &gt;= InpZEntry &amp;&amp; gapPts &gt;= InpMinNetEdgePts);</span><span class="l">   }</span><span class="l">   gapPts = (<span class="f">SlowBid</span>() - (<span class="f">FastAsk</span>() - g_mu))/g_point;</span><span class="l">   <span class="k">return</span> (z &lt;= -InpZEntry &amp;&amp; gapPts &gt;= InpMinNetEdgePts);</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">void</span> <span class="f">CancelCandidate</span>(<span class="k">const</span> <span class="t">string</span> why)</span><span class="l">{</span><span class="l">   <span class="k">if</span>(InpVerboseLog) <span class="f">Print</span>(<span class="s">"CANDIDATE cancelled ("</span>, why, <span class="s">") gap="</span>, <span class="f">DoubleToString</span>(g_candGap,<span class="n">1</span>),</span><span class="l">                           <span class="s">" z="</span>, <span class="f">DoubleToString</span>(g_candZ,<span class="n">2</span>));</span><span class="l">   g_candDir = <span class="n">0</span>; g_note = <span class="s">"cand cancelled: "</span> + why;</span><span class="l">   g_state = <span class="q">LA_READY</span>;</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">void</span> <span class="f">TryEnter</span>(<span class="k">const</span> <span class="t">ulong</span> now)</span><span class="l">{</span><span class="l">   <span class="t">string</span> why = <span class="s">""</span>;</span><span class="l">   <span class="k">if</span>(!<span class="f">FeedsHealthy</span>(why) || !<span class="f">SessionOK</span>() || !<span class="f">RiskOK</span>(why) || <span class="f">FastSpike</span>(now))</span><span class="l">   { <span class="f">CancelCandidate</span>(why); <span class="k">return</span>; }</span><span class="l">   <span class="k">if</span>(!InpTradingEnabled)</span><span class="l">   { g_note = <span class="s">"SIGNAL VALID (trading disabled): dir="</span> + (g_candDir&gt;<span class="n">0</span>?<span class="s">"BUY"</span>:<span class="s">"SELL"</span>) +</span><span class="l">              <span class="s">" gap="</span> + <span class="f">DoubleToString</span>(g_candGap,<span class="n">1</span>) + <span class="s">"pts z="</span> + <span class="f">DoubleToString</span>(g_candZ,<span class="n">2</span>);</span><span class="l">     <span class="f">CancelCandidate</span>(<span class="s">"trading disabled"</span>); <span class="k">return</span>; }</span><span class="l"> </span><span class="l">   <span class="t">double</span> lot = <span class="f">CalcLot</span>();</span><span class="l">   <span class="t">double</span> ask = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_ASK</span>);</span><span class="l">   <span class="t">double</span> bid = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_BID</span>);</span><span class="l">   <span class="t">double</span> sl, tp = <span class="n">0</span>;</span><span class="l">   <span class="t">bool</span> ok;</span><span class="l">   <span class="k">if</span>(g_candDir &gt; <span class="n">0</span>)</span><span class="l">   { sl = <span class="f">NormalizeDouble</span>(ask - InpStopLossPts*g_point, _Digits);</span><span class="l">     <span class="k">if</span>(InpTakeProfitPts &gt; <span class="n">0</span>) tp = <span class="f">NormalizeDouble</span>(ask + InpTakeProfitPts*g_point, _Digits);</span><span class="l">     ok = g_trade.<span class="f">Buy</span>(lot, _Symbol, <span class="n">0.0</span>, sl, tp, <span class="s">"LA-exec"</span>); }</span><span class="l">   <span class="k">else</span></span><span class="l">   { sl = <span class="f">NormalizeDouble</span>(bid + InpStopLossPts*g_point, _Digits);</span><span class="l">     <span class="k">if</span>(InpTakeProfitPts &gt; <span class="n">0</span>) tp = <span class="f">NormalizeDouble</span>(bid - InpTakeProfitPts*g_point, _Digits);</span><span class="l">     ok = g_trade.<span class="f">Sell</span>(lot, _Symbol, <span class="n">0.0</span>, sl, tp, <span class="s">"LA-exec"</span>); }</span><span class="l"> </span><span class="l">   <span class="t">uint</span> rc = g_trade.<span class="f">ResultRetcode</span>();</span><span class="l">   <span class="k">if</span>(ok &amp;&amp; (rc == <span class="q">TRADE_RETCODE_DONE</span> || rc == <span class="q">TRADE_RETCODE_DONE_PARTIAL</span>))</span><span class="l">   {</span><span class="l">      g_tradesToday++; g_fails = <span class="n">0</span>; g_state = <span class="q">LA_TRADE</span>;</span><span class="l">      <span class="f">Print</span>(<span class="s">"ENTER "</span>, g_candDir&gt;<span class="n">0</span>?<span class="s">"BUY"</span>:<span class="s">"SELL"</span>, <span class="s">" lot="</span>, lot,</span><span class="l">            <span class="s">" gap="</span>, <span class="f">DoubleToString</span>(g_candGap,<span class="n">1</span>), <span class="s">"pts z="</span>, <span class="f">DoubleToString</span>(g_candZ,<span class="n">2</span>));</span><span class="l">   }</span><span class="l">   <span class="k">else</span></span><span class="l">   {</span><span class="l">      g_fails++; g_lastClose = now; g_note = <span class="s">"order failed rc="</span> + (<span class="t">string</span>)rc;</span><span class="l">      <span class="f">Print</span>(<span class="s">"ORDER FAILED rc="</span>, rc);</span><span class="l">      <span class="k">if</span>(g_fails &gt;= InpFailHaltCount){ g_halt = <span class="s">"repeated execution failures"</span>; g_state = <span class="q">LA_HALT</span>; }</span><span class="l">      <span class="k">else</span> g_state = <span class="q">LA_READY</span>;</span><span class="l">   }</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- trade management -----------------------</span></span><span class="l"><span class="t">void</span> <span class="f">ManageTrade</span>(<span class="k">const</span> <span class="t">ulong</span> now)</span><span class="l">{</span><span class="l">   <span class="k">if</span>(!<span class="f">PositionSelect</span>(_Symbol) || <span class="f">PositionGetInteger</span>(<span class="q">POSITION_MAGIC</span>) != InpMagic)</span><span class="l">   { g_lastClose = now; g_state = <span class="q">LA_COOL</span>; <span class="k">return</span>; }               <span class="c">// closed by SL/TP/manual</span></span><span class="l"> </span><span class="l">   <span class="t">long</span>   typ  = <span class="f">PositionGetInteger</span>(<span class="q">POSITION_TYPE</span>);</span><span class="l">   <span class="t">int</span>    dir  = (typ == <span class="q">POSITION_TYPE_BUY</span>) ? <span class="n">1</span> : -<span class="n">1</span>;</span><span class="l">   <span class="t">double</span> held = (now - (<span class="t">ulong</span>)<span class="f">PositionGetInteger</span>(<span class="q">POSITION_TIME</span>))*<span class="n">1000</span>;</span><span class="l"> </span><span class="l">   <span class="t">string</span> why = <span class="s">""</span>;</span><span class="l">   <span class="t">bool</span> exit = <span class="k">false</span>;</span><span class="l">   <span class="k">if</span>(held &gt; (<span class="t">ulong</span>)InpMaxHoldSec*<span class="n">1000</span>){ why=<span class="s">"time stop"</span>; exit=<span class="k">true</span>; }</span><span class="l">   <span class="k">else</span> <span class="k">if</span>(!<span class="f">FeedsHealthy</span>(why)){ why=<span class="s">"feed lost"</span>; exit=<span class="k">true</span>; }</span><span class="l">   <span class="k">else</span></span><span class="l">   {</span><span class="l">      <span class="t">double</span> rem;</span><span class="l">      <span class="k">if</span>(dir &gt; <span class="n">0</span>) rem = (<span class="f">FastBid</span>() - g_mu - <span class="f">SlowBid</span>())/g_point;    <span class="c">// remaining edge on exit side</span></span><span class="l">      <span class="k">else</span>        rem = (<span class="f">SlowAsk</span>() - (<span class="f">FastAsk</span>() - g_mu))/g_point;</span><span class="l">      <span class="t">double</span> d = <span class="f">FastMid</span>() - <span class="f">SlowMid</span>();</span><span class="l">      <span class="t">double</span> z = (d - g_mu)/<span class="f">MathMax</span>(g_sd, InpSigmaFloorPts*g_point);</span><span class="l">      <span class="k">if</span>(rem &lt;= InpConvergencePts){ why=<span class="s">"converged"</span>; exit=<span class="k">true</span>; }</span><span class="l">      <span class="k">else</span> <span class="k">if</span>((dir&gt;<span class="n">0</span> &amp;&amp; z &lt;= InpZExit) || (dir&lt;<span class="n">0</span> &amp;&amp; z &gt;= -InpZExit)){ why=<span class="s">"z converged"</span>; exit=<span class="k">true</span>; }</span><span class="l">   }</span><span class="l">   <span class="k">if</span>(!exit &amp;&amp; !<span class="f">RiskOK</span>(why)) exit = <span class="k">true</span>;                          <span class="c">// daily/equity guard</span></span><span class="l">   <span class="k">if</span>(exit)</span><span class="l">   {</span><span class="l">      <span class="k">if</span>(g_trade.<span class="f">PositionClose</span>(_Symbol))</span><span class="l">      { <span class="f">Print</span>(<span class="s">"EXIT ("</span>, why, <span class="s">")"</span>); g_lastClose = now; g_state = <span class="q">LA_COOL</span>; }</span><span class="l">   }</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="c">//--------------------------- day / lifecycle ------------------------</span></span><span class="l"><span class="t">void</span> <span class="f">DayRoll</span>()</span><span class="l">{</span><span class="l">   <span class="t">MqlDateTime</span> dt; <span class="f">TimeToStruct</span>(<span class="f">TimeCurrent</span>(), dt);</span><span class="l">   <span class="k">if</span>(dt.day_of_year != g_doy)</span><span class="l">   {</span><span class="l">      g_doy = dt.day_of_year; g_dayStart = <span class="f">TimeCurrent</span>();</span><span class="l">      g_dayStartEq = <span class="f">AccountInfoDouble</span>(<span class="q">ACCOUNT_EQUITY</span>);</span><span class="l">      g_tradesToday = <span class="n">0</span>;</span><span class="l">      <span class="k">if</span>(g_state == <span class="q">LA_HALT</span> &amp;&amp; g_halt == <span class="s">"daily loss stop"</span>)</span><span class="l">      { g_halt = <span class="s">""</span>; g_state = (g_modelN &gt;= InpMinSamples) ? <span class="q">LA_READY</span> : <span class="q">LA_CALIB</span>; }</span><span class="l">      <span class="f">Print</span>(<span class="s">"New trading day. dayStartEq="</span>, g_dayStartEq);</span><span class="l">   }</span><span class="l">}</span><span class="l"> </span><span class="l"><span class="t">int</span> <span class="f">OnInit</span>()</span><span class="l">{</span><span class="l">   g_point = <span class="f">SymbolInfoDouble</span>(_Symbol, <span class="q">SYMBOL_POINT</span>);</span><span class="l">   <span class="k">if</span>(g_point &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="q">INIT_FAILED</span>;</span><span class="l">   g_fastName = (InpFastSymbol == <span class="s">""</span>) ? _Symbol : InpFastSymbol;</span><span class="l">   g_trade.<span class="f">SetExpertMagicNumber</span>(InpMagic);</span><span class="l">   g_trade.<span class="f">SetDeviationInPoints</span>((<span class="t">ulong</span>)InpMaxSlippagePts);</span><span class="l">   g_trade.<span class="f">SetTypeFillingBySymbol</span>(_Symbol);</span><span class="l">   g_lastSlowChange = <span class="f">Now</span>();</span><span class="l">   g_dayStartEq = <span class="f">AccountInfoDouble</span>(<span class="q">ACCOUNT_EQUITY</span>);</span><span class="l">   g_hwmEq = g_dayStartEq;</span><span class="l">   <span class="f">EventSetMillisecondTimer</span>(<span class="f">MathMax</span>(InpPollMs, <span class="n">1</span>));</span><span class="l">   <span class="f">Print</span>(<span class="s">"EA_Exec started. TradingEnabled="</span>, InpTradingEnabled,</span><span class="l">         <span class="s">" fastSymbol="</span>, g_fastName, <span class="s">" point="</span>, g_point);</span><span class="l">   <span class="k">return</span> <span class="q">INIT_SUCCEEDED</span>;</span><span class="l">}</span><span class="l"><span class="t">void</span> <span class="f">OnDeinit</span>(<span class="k">const</span> <span class="t">int</span> r){ <span class="f">EventKillTimer</span>(); <span class="f">Comment</span>(<span class="s">""</span>); }</span><span class="l"> </span><span class="l"><span class="t">void</span> <span class="f">OnTimer</span>()</span><span class="l">{</span><span class="l">   <span class="t">ulong</span> now = <span class="f">Now</span>();</span><span class="l">   <span class="f">DayRoll</span>();</span><span class="l"> </span><span class="l">   <span class="c">// slow-side sampling (poll, immune to OnTick coalescing)</span></span><span class="l">   <span class="t">MqlTick</span> t;</span><span class="l">   <span class="k">if</span>(<span class="f">SymbolInfoTick</span>(_Symbol, t) &amp;&amp; t.bid &gt; <span class="n">0</span>)</span><span class="l">   {</span><span class="l">      <span class="k">if</span>(t.bid != g_lastSlowBid || t.ask != g_lastSlowAsk)</span><span class="l">      { g_lastSlowBid = t.bid; g_lastSlowAsk = t.ask; g_lastSlowChange = now; }</span><span class="l">      <span class="f">PushS</span>(now, t.bid, t.ask);</span><span class="l">   }</span><span class="l"> </span><span class="l">   <span class="f">ReadFeed</span>();</span><span class="l"> </span><span class="l">   <span class="c">// model refresh (throttled)</span></span><span class="l">   <span class="k">if</span>(now - g_lastModelMs &gt;= <span class="n">100</span>){ <span class="f">UpdateModel</span>(now); g_lastModelMs = now; }</span><span class="l"> </span><span class="l">   <span class="c">// state machine</span></span><span class="l">   <span class="k">switch</span>(g_state)</span><span class="l">   {</span><span class="l">      <span class="k">case</span> <span class="q">LA_CALIB</span>:</span><span class="l">         <span class="k">if</span>(g_modelN &gt;= InpMinSamples &amp;&amp; g_sd &gt; <span class="n">0</span>){ g_state = <span class="q">LA_READY</span>; <span class="f">Print</span>(<span class="s">"Calibration complete: mu="</span>, g_mu, <span class="s">" sd="</span>, g_sd); }</span><span class="l">         <span class="k">break</span>;</span><span class="l"> </span><span class="l">      <span class="k">case</span> <span class="q">LA_READY</span>:</span><span class="l">         <span class="k">if</span>(g_modelN &lt; InpMinSamples*<span class="n">8</span>/<span class="n">10</span>){ g_state = <span class="q">LA_CALIB</span>; <span class="k">break</span>; }</span><span class="l">         {</span><span class="l">            <span class="t">string</span> why;</span><span class="l">            <span class="k">if</span>(!<span class="f">FeedsHealthy</span>(why) || !<span class="f">SessionOK</span>() || <span class="f">FastSpike</span>(now)) <span class="k">break</span>;</span><span class="l">            <span class="k">if</span>(now - g_lastClose &lt; (<span class="t">ulong</span>)InpCooldownSec*<span class="n">1000</span>) <span class="k">break</span>;</span><span class="l">            <span class="t">double</span> gap=<span class="n">0</span>, z=<span class="n">0</span>;</span><span class="l">            <span class="t">int</span> dir = <span class="n">0</span>;</span><span class="l">            <span class="k">if</span>(<span class="f">SignalFor</span>( <span class="n">1</span>, gap, z)) dir =  <span class="n">1</span>;</span><span class="l">            <span class="k">else</span> <span class="k">if</span>(<span class="f">SignalFor</span>(-<span class="n">1</span>, gap, z)) dir = -<span class="n">1</span>;</span><span class="l">            <span class="k">if</span>(dir != <span class="n">0</span>)</span><span class="l">            {</span><span class="l">               g_candDir = dir; g_candStart = now; g_candSeq0 = g_lastSeq;</span><span class="l">               g_candUpd = <span class="n">0</span>; g_candGap = gap; g_candZ = z; g_state = <span class="q">LA_CAND</span>;</span><span class="l">               <span class="k">if</span>(InpVerboseLog) <span class="f">Print</span>(<span class="s">"CANDIDATE armed dir="</span>, dir, <span class="s">" gap="</span>, gap, <span class="s">" z="</span>, z);</span><span class="l">            }</span><span class="l">         }</span><span class="l">         <span class="k">break</span>;</span><span class="l"> </span><span class="l">      <span class="k">case</span> <span class="q">LA_CAND</span>:</span><span class="l">         <span class="k">if</span>(g_lastSeq != g_candSeq0){ g_candUpd++; g_candSeq0 = g_lastSeq; }</span><span class="l">         {</span><span class="l">            <span class="t">double</span> gap=<span class="n">0</span>, z=<span class="n">0</span>;</span><span class="l">            <span class="k">if</span>(!<span class="f">SignalFor</span>(g_candDir, gap, z)) { <span class="f">CancelCandidate</span>(<span class="s">"conditions gone"</span>); <span class="k">break</span>; }</span><span class="l">            g_candGap = gap; g_candZ = z;</span><span class="l">            <span class="k">if</span>(now - g_candStart &gt;= (<span class="t">ulong</span>)InpPersistMs &amp;&amp; g_candUpd &gt;= InpPersistUpdates)</span><span class="l">               <span class="f">TryEnter</span>(now);</span><span class="l">         }</span><span class="l">         <span class="k">break</span>;</span><span class="l"> </span><span class="l">      <span class="k">case</span> <span class="q">LA_TRADE</span>:  <span class="f">ManageTrade</span>(now); <span class="k">break</span>;</span><span class="l"> </span><span class="l">      <span class="k">case</span> <span class="q">LA_COOL</span>:</span><span class="l">         <span class="k">if</span>(now - g_lastClose &gt;= (<span class="t">ulong</span>)InpCooldownSec*<span class="n">1000</span>)</span><span class="l">            g_state = (g_modelN &gt;= InpMinSamples) ? <span class="q">LA_READY</span> : <span class="q">LA_CALIB</span>;</span><span class="l">         <span class="k">break</span>;</span><span class="l"> </span><span class="l">      <span class="k">case</span> <span class="q">LA_HALT</span>: <span class="k">break</span>;   <span class="c">// requires manual restart (or day roll for daily stop)</span></span><span class="l">   }</span><span class="l"> </span><span class="l">   <span class="c">// panel</span></span><span class="l">   <span class="k">if</span>(now - g_lastPanelMs &gt;= (<span class="t">ulong</span>)InpPanelRefreshMs)</span><span class="l">   {</span><span class="l">      g_lastPanelMs = now;</span><span class="l">      <span class="t">string</span> stName[<span class="n">6</span>] = {<span class="s">"CALIBRATING"</span>,<span class="s">"READY"</span>,<span class="s">"CANDIDATE"</span>,<span class="s">"IN_TRADE"</span>,<span class="s">"COOLDOWN"</span>,<span class="s">"HALTED"</span>};</span><span class="l">      <span class="t">string</span> why = <span class="s">""</span>;</span><span class="l">      <span class="t">double</span> fSpread = (g_fCount&gt;<span class="n">0</span>) ? (<span class="f">FastAsk</span>()-<span class="f">FastBid</span>())/g_point : <span class="n">0</span>;</span><span class="l">      <span class="t">double</span> sSpread = (g_sCount&gt;<span class="n">0</span>) ? (<span class="f">SlowAsk</span>()-<span class="f">SlowBid</span>())/g_point : <span class="n">0</span>;</span><span class="l">      <span class="t">double</span> d = (g_fCount&gt;<span class="n">0</span> &amp;&amp; g_sCount&gt;<span class="n">0</span>) ? <span class="f">FastMid</span>()-<span class="f">SlowMid</span>() : <span class="n">0</span>;</span><span class="l">      <span class="t">double</span> eq = <span class="f">AccountInfoDouble</span>(<span class="q">ACCOUNT_EQUITY</span>);</span><span class="l">      <span class="t">double</span> gapB = (g_fCount&gt;<span class="n">0</span> &amp;&amp; g_sCount&gt;<span class="n">0</span>) ? (<span class="f">FastBid</span>()-g_mu-<span class="f">SlowAsk</span>())/g_point : <span class="n">0</span>;</span><span class="l">      <span class="t">double</span> gapS = (g_fCount&gt;<span class="n">0</span> &amp;&amp; g_sCount&gt;<span class="n">0</span>) ? (<span class="f">SlowBid</span>()-(<span class="f">FastAsk</span>()-g_mu))/g_point : <span class="n">0</span>;</span><span class="l">      <span class="t">string</span> s;</span><span class="l">      s += <span class="s">"====== EA_Exec — latency-arb research kit ======\n"</span>;</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"STATE: %s%s%s\n"</span>, stName[g_state],</span><span class="l">                        (g_halt!=<span class="s">""</span>) ? (<span class="s">"  HALT: "</span>+g_halt) : <span class="s">""</span>,</span><span class="l">                        (g_note!=<span class="s">""</span>) ? (<span class="s">"\n"</span>+g_note) : <span class="s">""</span>);</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"TRADING: %s   symbol=%s   fastFeed=%s\n"</span>,</span><span class="l">                        InpTradingEnabled ? <span class="s">"ENABLED"</span> : <span class="s">"OFF (observer)"</span>, _Symbol, g_fastName);</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"FEED fast: bid/ask=%s/%s spr=%.1fpts age=%ums\n"</span>,</span><span class="l">                        g_fCount&gt;<span class="n">0</span>?<span class="f">DoubleToString</span>(<span class="f">FastBid</span>(),_Digits):<span class="s">"-"</span>,</span><span class="l">                        g_fCount&gt;<span class="n">0</span>?<span class="f">DoubleToString</span>(<span class="f">FastAsk</span>(),_Digits):<span class="s">"-"</span>,</span><span class="l">                        fSpread, g_fCount&gt;<span class="n">0</span>?(<span class="t">uint</span>)(now-g_f[g_fHead].ms):<span class="n">0</span>);</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"FEED slow: bid/ask=%s/%s spr=%.1fpts flatAge=%ums\n"</span>,</span><span class="l">                        g_sCount&gt;<span class="n">0</span>?<span class="f">DoubleToString</span>(<span class="f">SlowBid</span>(),_Digits):<span class="s">"-"</span>,</span><span class="l">                        g_sCount&gt;<span class="n">0</span>?<span class="f">DoubleToString</span>(<span class="f">SlowAsk</span>(),_Digits):<span class="s">"-"</span>,</span><span class="l">                        sSpread, (<span class="t">uint</span>)(now-g_lastSlowChange));</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"MODEL: d=%.5f  mu=%.5f  sd=%.5f  z=%.2f  samples=%d/%d\n"</span>,</span><span class="l">                        d, g_mu, g_sd, (g_sd&gt;<span class="n">0</span>)?(d-g_mu)/<span class="f">MathMax</span>(g_sd,InpSigmaFloorPts*g_point):<span class="n">0</span>,</span><span class="l">                        g_modelN, InpMinSamples);</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"GAPS: buy=%+.1fpts  sell=%+.1fpts  need&gt;=%.1f (net) +%.1f cost buffer\n"</span>,</span><span class="l">                        gapB, gapS, InpMinNetEdgePts, InpCostBufferPts);</span><span class="l">      s += <span class="f">StringFormat</span>(<span class="s">"RISK: equity=%.2f  dayPL=%.2f  tradesToday=%d/%d  openPL=%.2f  fails=%d\n"</span>,</span><span class="l">                        eq, <span class="f">DayRealizedPL</span>()+<span class="f">FloatingPL</span>(), g_tradesToday, InpMaxTradesPerDay,</span><span class="l">                        <span class="f">FloatingPL</span>(), g_fails);</span><span class="l">      <span class="k">if</span>(g_state == <span class="q">LA_CAND</span>)</span><span class="l">         s += <span class="f">StringFormat</span>(<span class="s">"CANDIDATE: dir=%s  survived=%ums/%d updates (need %ums/%d)\n"</span>,</span><span class="l">                           g_candDir&gt;<span class="n">0</span>?<span class="s">"BUY"</span>:<span class="s">"SELL"</span>, (<span class="t">uint</span>)(now-g_candStart), g_candUpd,</span><span class="l">                           InpPersistMs, InpPersistUpdates);</span><span class="l">      <span class="f">Comment</span>(s);</span><span class="l">   }</span><span class="l">}</span></code></pre></div>
+      </div>
+      <script type="text/plain" id="src-feed">//+------------------------------------------------------------------+
+//| EA_Feed.mq5 — fast-broker side. Broadcasts ticks to EA_Exec      |
+//| via an atomic snapshot file in the common MQL5 files folder.     |
+//| Requirements: same VPS/machine AND same Windows user as EA_Exec. |
+//+------------------------------------------------------------------+
+#property strict
+#property version   "1.00"
+
+input string InpSymbols     = "";                      // Symbols to feed ("" = chart symbol), comma separated
+input string InpFileName    = "LA_feed_snapshot.bin";  // Snapshot file (FILE_COMMON)
+input int    InpHeartbeatMs = 500;                     // Rewrite even if market quiet (ms)
+input int    InpTimerMs     = 5;                       // Poll interval (ms)
+input bool   InpShowPanel   = true;
+
+#define LA_MAGIC 0x4C413101
+#define LA_MAXSYM 8
+
+struct HeadRec { uint magic; uint seq; long msLocal; int nsym; };
+struct SymRec  { uchar name[16]; double bid; double ask; long time_msc; };
+
+string g_names[LA_MAXSYM];
+double g_bid[LA_MAXSYM], g_ask[LA_MAXSYM];
+int    g_n = 0;
+uint   g_seq = 0, g_writes = 0, g_err = 0;
+ulong  g_lastWrite = 0;
+
+string Trim(string s){ StringTrimLeft(s); StringTrimRight(s); return s; }
+
+int OnInit()
+{
+   string list = InpSymbols;
+   if(Trim(list) == "") list = _Symbol;
+   string parts[];
+   int k = StringSplit(list, ',', parts);
+   for(int i = 0; i < k && g_n < LA_MAXSYM; i++)
+   {
+      string s = Trim(parts[i]);
+      if(s == "" || !SymbolSelect(s, true)) { Print("Skip symbol: ", s); continue; }
+      g_names[g_n++] = s;
+   }
+   if(g_n == 0){ Print("No valid symbols"); return INIT_FAILED; }
+   EventSetMillisecondTimer(MathMax(InpTimerMs, 1));
+   Print("EA_Feed started: ", g_n, " symbol(s)");
+   return INIT_SUCCEEDED;
+}
+void OnDeinit(const int r){ EventKillTimer(); Comment(""); }
+
+bool WriteSnapshot(const ulong now)
+{
+   string tmp = InpFileName + ".tmp";
+   int h = FileOpen(tmp, FILE_COMMON|FILE_WRITE|FILE_BIN);
+   if(h == INVALID_HANDLE){ g_err++; return false; }
+   HeadRec head; head.magic = LA_MAGIC; head.seq = ++g_seq;
+   head.msLocal = (long)now; head.nsym = g_n;
+   FileWriteStruct(h, head);
+   for(int i = 0; i < g_n; i++)
+   {
+      SymRec r;
+      StringToCharArray(g_names[i], r.name, 0, 15);
+      r.bid = g_bid[i]; r.ask = g_ask[i];
+      MqlTick t;
+      r.time_msc = SymbolInfoTick(g_names[i], t) ? t.time_msc : 0;
+      FileWriteStruct(h, r);
+   }
+   FileClose(h);
+   // Atomic replace: readers never see a half-written file.
+   if(!FileMove(tmp, FILE_COMMON, InpFileName, FILE_COMMON|FILE_REWRITE))
+   { g_err++; FileDelete(tmp, FILE_COMMON); return false; }
+   return true;
+}
+
+void OnTimer()
+{
+   ulong now = GetTickCount64();
+   bool changed = false;
+   for(int i = 0; i < g_n; i++)
+   {
+      MqlTick t;
+      if(!SymbolInfoTick(g_names[i], t)){ g_err++; continue; }
+      if(t.bid != g_bid[i] || t.ask != g_ask[i])
+      { g_bid[i] = t.bid; g_ask[i] = t.ask; changed = true; }
+   }
+   if(changed || now - g_lastWrite >= (ulong)InpHeartbeatMs)
+   {
+      if(WriteSnapshot(now)){ g_lastWrite = now; g_writes++; }
+   }
+   if(InpShowPanel)
+   {
+      string s = StringFormat("EA_Feed  | seq=%u  writes=%u  err=%u\n", g_seq, g_writes, g_err);
+      for(int i = 0; i < g_n; i++)
+         s += StringFormat("%s  bid=%s  ask=%s\n", g_names[i],
+                           DoubleToString(g_bid[i], _Digits),
+                           DoubleToString(g_ask[i], _Digits));
+      Comment(s);
+   }
+}</script>
+      <script type="text/plain" id="src-exec">//+------------------------------------------------------------------+
+//| EA_Exec.mq5 — slow-broker side of the latency-arb research kit.  |
+//| Attach to the SLOW broker terminal on the symbol to trade.       |
+//| DEFAULT: trading OFF (observer/logger). Enable only after weeks  |
+//| of demo validation AND written broker permission.                |
+//+------------------------------------------------------------------+
+#property strict
+#property version   "1.00"
+#include <Trade\Trade.mqh>
+
+enum ENUM_LA_STATE { LA_CALIB, LA_READY, LA_CAND, LA_TRADE, LA_COOL, LA_HALT };
+
+input group "=== 1. Connection (fast feed) ==="
+input string InpFeedFile          = "LA_feed_snapshot.bin"; // Snapshot file (same as EA_Feed)
+input int    InpPollMs            = 10;      // Processing interval (ms)
+input int    InpFeedMaxAgeMs      = 750;     // Fast quote older than this = stale
+input int    InpFeedFreezeMs      = 2000;    // No new snapshot seq this long = feed frozen
+input int    InpMaxPairMs         = 150;     // Max age of fast sample when pairing with slow tick
+input string InpFastSymbol        = "";      // Fast symbol name if different from chart symbol
+
+input group "=== 2. Model & auto-calibration ==="
+input int    InpCalibWindowSec    = 180;     // Rolling window for mean/sigma (sec)
+input int    InpMinSamples        = 300;     // Min paired samples before trading allowed
+input double InpSigmaFloorPts     = 3.0;     // Sigma floor (slow-symbol points)
+input double InpZEntry            = 3.5;     // |z| needed to arm a candidate
+input double InpZExit             = 1.0;     // |z| back below this = converged
+input double InpMinNetEdgePts     = 15;      // Min executable edge AFTER costs (points)
+input double InpCostBufferPts     = 10;      // Est. commission+slippage buffer (points)
+
+input group "=== 3. Opportunity quality filters ==="
+input int    InpPersistMs         = 250;     // Opportunity must survive this long (ms)
+input int    InpPersistUpdates    = 3;       // ...across >= N distinct fast updates
+input double InpFastSpreadMaxPts  = 30;      // Fast spread cap (in slow-symbol points*)
+input double InpSlowSpreadMaxPts  = 30;      // Slow spread cap (points)  *5-digit FX majors
+input int    InpSpikeJumpPts      = 120;     // Fast move > this within 200ms = spike
+input int    InpSpikeSuspendMs    = 3000;    // Suspend signal after spike (ms)
+input int    InpSlowMaxAgeMs      = 1500;    // Slow quote unchanged this long = suspend
+
+input group "=== 4. Execution & exits ==="
+input double InpStopLossPts       = 250;     // Hard stop-loss (points)
+input double InpTakeProfitPts     = 0;       // Optional TP (0 = convergence/time exit)
+input int    InpMaxHoldSec        = 45;      // Time stop (sec)
+input double InpConvergencePts    = 3;       // Close when remaining edge <= this (points)
+input int    InpCooldownSec       = 20;      // Pause after a trade closes (sec)
+input double InpMaxSlippagePts    = 20;      // Max deviation (points)
+input int    InpFailHaltCount     = 3;       // Consecutive failed orders -> halt
+input long   InpMagic             = 771880;
+
+input group "=== 5. Risk management ==="
+input bool   InpTradingEnabled    = false;   // false = observe/measure only (START HERE)
+input double InpRiskPercent       = 0.5;     // Risk % equity per trade (0 = fixed lot)
+input double InpFixedLot          = 0.01;    // Fixed lot if RiskPercent = 0
+input double InpMaxLot            = 1.0;     // Hard lot cap
+input double InpDailyLossPct      = 2.0;     // Halt for the day at -X% of day-start equity
+input double InpEquityGuardPct    = 10.0;    // Permanent halt at -X% from session high-water
+input int    InpMaxTradesPerDay   = 10;      // Max entries per day
+
+input group "=== 6. Session filter (server time) ==="
+input bool   InpUseSession        = true;
+input int    InpStartHour         = 1;       // Skip rollover hour
+input int    InpEndHour           = 23;
+
+input group "=== 7. Misc ==="
+input bool   InpVerboseLog        = false;
+input int    InpPanelRefreshMs    = 250;
+
+#define RING_N 256
+#define DMAX   4096
+struct Sample { ulong ms; double bid; double ask; double mid; uint seq; };
+
+Sample g_f[RING_N]; int g_fHead=0, g_fCount=0;      // fast feed ring
+Sample g_s[RING_N]; int g_sHead=0, g_sCount=0;      // slow feed ring
+double g_dV[DMAX];  ulong g_dM[DMAX]; int g_dHead=0, g_dCount=0; // paired d ring
+
+CTrade g_trade;
+ENUM_LA_STATE g_state = LA_CALIB;
+string g_fastName = "", g_halt = "", g_note = "";
+double g_point = 0, g_mu = 0, g_sd = 0;
+int    g_modelN = 0;
+uint   g_lastSeq = 0;          ulong g_lastSeqMs = 0;
+ulong  g_lastSlowChange = 0;   double g_lastSlowBid = 0, g_lastSlowAsk = 0;
+ulong  g_spikeUntil = 0;
+int    g_candDir = 0;          ulong g_candStart = 0;
+uint   g_candSeq0 = 0;         int   g_candUpd = 0;
+double g_candGap = 0, g_candZ = 0;
+ulong  g_lastClose = 0;        int   g_tradesToday = 0, g_fails = 0;
+double g_dayStartEq = 0, g_hwmEq = 0;
+datetime g_dayStart = 0;       int   g_doy = -1;
+ulong  g_lastModelMs = 0, g_lastPanelMs = 0;
+
+//---------------------------- helpers -------------------------------
+ulong Now(){ return GetTickCount64(); }
+double PointS(){ return g_point; }
+
+void PushF(const ulong ms, const double b, const double a, const uint seq)
+{
+   g_fHead=(g_fHead+1)%RING_N;
+   g_f[g_fHead].ms=ms; g_f[g_fHead].bid=b; g_f[g_fHead].ask=a;
+   g_f[g_fHead].mid=(b+a)/2.0; g_f[g_fHead].seq=seq;
+   if(g_fCount<RING_N) g_fCount++;
+}
+void PushS(const ulong ms, const double b, const double a)
+{
+   g_sHead=(g_sHead+1)%RING_N;
+   g_s[g_sHead].ms=ms; g_s[g_sHead].bid=b; g_s[g_sHead].ask=a;
+   g_s[g_sHead].mid=(b+a)/2.0; g_s[g_sHead].seq=0;
+   if(g_sCount<RING_N) g_sCount++;
+}
+double FastBid(){ return g_f[g_fHead].bid; }
+double FastAsk(){ return g_f[g_fHead].ask; }
+double FastMid(){ return g_f[g_fHead].mid; }
+double SlowBid(){ return g_s[g_sHead].bid; }
+double SlowAsk(){ return g_s[g_sHead].ask; }
+double SlowMid(){ return g_s[g_sHead].mid; }
+
+// newest-first iteration helper
+int RingIdx(const int head, const int back){ return ((head-back)%RING_N+RING_N)%RING_N; }
+
+//--------------------------- feed reader ----------------------------
+void ReadFeed()
+{
+   int h = FileOpen(InpFeedFile, FILE_COMMON|FILE_READ|FILE_BIN|
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE);
+   if(h == INVALID_HANDLE) return;
+   HeadRec head;
+   if(FileReadStruct(h, head) && head.magic == 0x4C413101 && head.nsym > 0 && head.nsym <= 8)
+   {
+      if(head.seq != g_lastSeq)
+      {
+         for(int i = 0; i < head.nsym; i++)
+         {
+            SymRec r;
+            if(!FileReadStruct(h, r)) break;
+            string nm = CharArrayToString(r.name);
+            if(nm == g_fastName && r.bid > 0 && r.ask > 0)
+            {
+               PushF((ulong)head.msLocal, r.bid, r.ask, head.seq);
+               g_lastSeq = head.seq; g_lastSeqMs = Now();
+               TryPairAndAppend();               // sample tied to fast updates
+            }
+         }
+      }
+   }
+   FileClose(h);
+}
+
+// Pair latest slow tick with the newest fast sample; append d = fastMid - slowMid
+void TryPairAndAppend()
+{
+   ulong now = Now();
+   if(g_sCount == 0 || g_fCount == 0) return;
+   if(now - g_f[g_fHead].ms > (ulong)InpMaxPairMs) return;      // fast too old to pair
+   if(now < g_spikeUntil) return;                                // spike suspension
+   if(g_state == LA_CAND || g_state == LA_TRADE) return;         // freeze learning
+   double d = FastMid() - SlowMid();
+   g_dHead = (g_dHead+1)%DMAX; g_dV[g_dHead] = d; g_dM[g_dHead] = now;
+   if(g_dCount < DMAX) g_dCount++;
+}
+
+//--------------------------- model update ---------------------------
+int UpdateModel(const ulong now)
+{
+   ulong win = (ulong)InpCalibWindowSec*1000;
+   double sum=0, sumsq=0; int n=0;
+   for(int k = 0; k < g_dCount; k++)
+   {
+      int i = RingIdx(g_dHead, k);
+      if(now - g_dM[i] > win) break;
+      sum += g_dV[i]; sumsq += g_dV[i]*g_dV[i]; n++;
+   }
+   g_modelN = n;
+   if(n >= 10)
+   {
+      g_mu = sum/n;
+      double var = MathMax(sumsq/n - g_mu*g_mu, 0.0);
+      g_sd = MathSqrt(var);
+   }
+   return n;
+}
+
+//--------------------------- health & gates -------------------------
+bool FeedsHealthy(string &why)
+{
+   ulong now = Now();
+   if(g_fCount == 0 || g_sCount == 0){ why="no data"; return false; }
+   if(now - g_f[g_fHead].ms > (ulong)InpFeedMaxAgeMs){ why="fast feed stale"; return false; }
+   if(now - g_lastSeqMs  > (ulong)InpFeedFreezeMs)  { why="fast feed frozen"; return false; }
+   if(now - g_lastSlowChange > (ulong)InpSlowMaxAgeMs){ why="slow quote flat/stale"; return false; }
+   double fSpread=(FastAsk()-FastBid())/g_point, sSpread=(SlowAsk()-SlowBid())/g_point;
+   if(fSpread > InpFastSpreadMaxPts){ why="fast spread too wide"; return false; }
+   if(sSpread > InpSlowSpreadMaxPts){ why="slow spread too wide"; return false; }
+   if(FastBid()<=0 || SlowBid()<=0 || FastAsk()<FastBid() || SlowAsk()<SlowBid())
+   { why="invalid/crossed quote"; return false; }
+   return true;
+}
+
+bool FastSpike(const ulong now)   // big fast move within 200ms => suspect spike/news
+{
+   double mx=-DBL_MAX, mn=DBL_MAX;
+   for(int k = 0; k < g_fCount; k++)
+   {
+      int i = RingIdx(g_fHead, k);
+      if(now - g_f[i].ms > 200) break;
+      mx = MathMax(mx, g_f[i].mid); mn = MathMin(mn, g_f[i].mid);
+   }
+   return (mx-mn) > InpSpikeJumpPts*g_point;
+}
+
+bool SessionOK()
+{
+   if(!InpUseSession) return true;
+   MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
+   return (dt.hour >= InpStartHour && dt.hour < InpEndHour);
+}
+
+double DayRealizedPL()
+{
+   double pl = 0;
+   if(!HistorySelect(g_dayStart, TimeCurrent()+60)) return 0;
+   for(int i = HistoryDealsTotal()-1; i >= 0; i--)
+   {
+      ulong tk = HistoryDealGetTicket(i);
+      if(tk == 0) continue;
+      if(HistoryDealGetInteger(tk, DEAL_MAGIC) != InpMagic) continue;
+      pl += HistoryDealGetDouble(tk, DEAL_PROFIT)
+          + HistoryDealGetDouble(tk, DEAL_SWAP)
+          + HistoryDealGetDouble(tk, DEAL_COMMISSION);
+   }
+   return pl;
+}
+
+bool RiskOK(string &why)   // daily loss, equity guard, caps
+{
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   g_hwmEq = MathMax(g_hwmEq, eq);
+   if(eq < g_hwmEq*(1.0 - InpEquityGuardPct/100.0))
+   { g_halt = "EQUITY GUARD hit — manual restart required"; g_state = LA_HALT; why=g_halt; return false; }
+   double dayPL = DayRealizedPL() + FloatingPL();
+   if(g_dayStartEq > 0 && dayPL < -g_dayStartEq*InpDailyLossPct/100.0)
+   { g_halt = "daily loss stop"; g_state = LA_HALT; why=g_halt; return false; }
+   if(g_tradesToday >= InpMaxTradesPerDay){ why="max trades/day"; return false; }
+   return true;
+}
+
+double FloatingPL()
+{
+   if(!PositionSelect(_Symbol)) return 0;
+   if(PositionGetInteger(POSITION_MAGIC) != InpMagic) return 0;
+   return PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+}
+
+//--------------------------- sizing & orders ------------------------
+double NormalizeLot(double lot)
+{
+   double minL = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double maxL = MathMin(SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX), InpMaxLot);
+   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   if(step > 0) lot = MathFloor(lot/step)*step;
+   return MathMin(MathMax(lot, minL), maxL);
+}
+
+double CalcLot()
+{
+   if(InpRiskPercent <= 0) return NormalizeLot(InpFixedLot);
+   double riskMoney = AccountInfoDouble(ACCOUNT_EQUITY)*InpRiskPercent/100.0;
+   double tickSize  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   if(tickSize <= 0 || tickValue <= 0) return NormalizeLot(InpFixedLot);
+   double lossPerLot = InpStopLossPts*g_point/tickSize*tickValue;
+   if(lossPerLot <= 0) return NormalizeLot(InpFixedLot);
+   return NormalizeLot(riskMoney/lossPerLot);
+}
+
+//--------------------------- signal core ----------------------------
+// gap measured on executable prices, with structural offset mu removed:
+//   buy : fast_bid - mu - slow_ask    (slow is stale LOW  -> rises)
+//   sell: slow_bid - (fast_ask - mu)  (slow is stale HIGH -> falls)
+bool SignalFor(const int dir, double &gapPts, double &z)
+{
+   if(g_sd <= 0 && InpSigmaFloorPts <= 0) return false;
+   double d = FastMid() - SlowMid();
+   double sigma = MathMax(g_sd, InpSigmaFloorPts*g_point);
+   z = (d - g_mu)/sigma;
+   if(dir > 0)
+   {
+      gapPts = (FastBid() - g_mu - SlowAsk())/g_point;
+      return (z >= InpZEntry && gapPts >= InpMinNetEdgePts);
+   }
+   gapPts = (SlowBid() - (FastAsk() - g_mu))/g_point;
+   return (z <= -InpZEntry && gapPts >= InpMinNetEdgePts);
+}
+
+void CancelCandidate(const string why)
+{
+   if(InpVerboseLog) Print("CANDIDATE cancelled (", why, ") gap=", DoubleToString(g_candGap,1),
+                           " z=", DoubleToString(g_candZ,2));
+   g_candDir = 0; g_note = "cand cancelled: " + why;
+   g_state = LA_READY;
+}
+
+void TryEnter(const ulong now)
+{
+   string why = "";
+   if(!FeedsHealthy(why) || !SessionOK() || !RiskOK(why) || FastSpike(now))
+   { CancelCandidate(why); return; }
+   if(!InpTradingEnabled)
+   { g_note = "SIGNAL VALID (trading disabled): dir=" + (g_candDir>0?"BUY":"SELL") +
+              " gap=" + DoubleToString(g_candGap,1) + "pts z=" + DoubleToString(g_candZ,2);
+     CancelCandidate("trading disabled"); return; }
+
+   double lot = CalcLot();
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double sl, tp = 0;
+   bool ok;
+   if(g_candDir > 0)
+   { sl = NormalizeDouble(ask - InpStopLossPts*g_point, _Digits);
+     if(InpTakeProfitPts > 0) tp = NormalizeDouble(ask + InpTakeProfitPts*g_point, _Digits);
+     ok = g_trade.Buy(lot, _Symbol, 0.0, sl, tp, "LA-exec"); }
+   else
+   { sl = NormalizeDouble(bid + InpStopLossPts*g_point, _Digits);
+     if(InpTakeProfitPts > 0) tp = NormalizeDouble(bid - InpTakeProfitPts*g_point, _Digits);
+     ok = g_trade.Sell(lot, _Symbol, 0.0, sl, tp, "LA-exec"); }
+
+   uint rc = g_trade.ResultRetcode();
+   if(ok && (rc == TRADE_RETCODE_DONE || rc == TRADE_RETCODE_DONE_PARTIAL))
+   {
+      g_tradesToday++; g_fails = 0; g_state = LA_TRADE;
+      Print("ENTER ", g_candDir>0?"BUY":"SELL", " lot=", lot,
+            " gap=", DoubleToString(g_candGap,1), "pts z=", DoubleToString(g_candZ,2));
+   }
+   else
+   {
+      g_fails++; g_lastClose = now; g_note = "order failed rc=" + (string)rc;
+      Print("ORDER FAILED rc=", rc);
+      if(g_fails >= InpFailHaltCount){ g_halt = "repeated execution failures"; g_state = LA_HALT; }
+      else g_state = LA_READY;
+   }
+}
+
+//--------------------------- trade management -----------------------
+void ManageTrade(const ulong now)
+{
+   if(!PositionSelect(_Symbol) || PositionGetInteger(POSITION_MAGIC) != InpMagic)
+   { g_lastClose = now; g_state = LA_COOL; return; }               // closed by SL/TP/manual
+
+   long   typ  = PositionGetInteger(POSITION_TYPE);
+   int    dir  = (typ == POSITION_TYPE_BUY) ? 1 : -1;
+   double held = (now - (ulong)PositionGetInteger(POSITION_TIME))*1000;
+
+   string why = "";
+   bool exit = false;
+   if(held > (ulong)InpMaxHoldSec*1000){ why="time stop"; exit=true; }
+   else if(!FeedsHealthy(why)){ why="feed lost"; exit=true; }
+   else
+   {
+      double rem;
+      if(dir > 0) rem = (FastBid() - g_mu - SlowBid())/g_point;    // remaining edge on exit side
+      else        rem = (SlowAsk() - (FastAsk() - g_mu))/g_point;
+      double d = FastMid() - SlowMid();
+      double z = (d - g_mu)/MathMax(g_sd, InpSigmaFloorPts*g_point);
+      if(rem <= InpConvergencePts){ why="converged"; exit=true; }
+      else if((dir>0 && z <= InpZExit) || (dir<0 && z >= -InpZExit)){ why="z converged"; exit=true; }
+   }
+   if(!exit && !RiskOK(why)) exit = true;                          // daily/equity guard
+   if(exit)
+   {
+      if(g_trade.PositionClose(_Symbol))
+      { Print("EXIT (", why, ")"); g_lastClose = now; g_state = LA_COOL; }
+   }
+}
+
+//--------------------------- day / lifecycle ------------------------
+void DayRoll()
+{
+   MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
+   if(dt.day_of_year != g_doy)
+   {
+      g_doy = dt.day_of_year; g_dayStart = TimeCurrent();
+      g_dayStartEq = AccountInfoDouble(ACCOUNT_EQUITY);
+      g_tradesToday = 0;
+      if(g_state == LA_HALT && g_halt == "daily loss stop")
+      { g_halt = ""; g_state = (g_modelN >= InpMinSamples) ? LA_READY : LA_CALIB; }
+      Print("New trading day. dayStartEq=", g_dayStartEq);
+   }
+}
+
+int OnInit()
+{
+   g_point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(g_point <= 0) return INIT_FAILED;
+   g_fastName = (InpFastSymbol == "") ? _Symbol : InpFastSymbol;
+   g_trade.SetExpertMagicNumber(InpMagic);
+   g_trade.SetDeviationInPoints((ulong)InpMaxSlippagePts);
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   g_lastSlowChange = Now();
+   g_dayStartEq = AccountInfoDouble(ACCOUNT_EQUITY);
+   g_hwmEq = g_dayStartEq;
+   EventSetMillisecondTimer(MathMax(InpPollMs, 1));
+   Print("EA_Exec started. TradingEnabled=", InpTradingEnabled,
+         " fastSymbol=", g_fastName, " point=", g_point);
+   return INIT_SUCCEEDED;
+}
+void OnDeinit(const int r){ EventKillTimer(); Comment(""); }
+
+void OnTimer()
+{
+   ulong now = Now();
+   DayRoll();
+
+   // slow-side sampling (poll, immune to OnTick coalescing)
+   MqlTick t;
+   if(SymbolInfoTick(_Symbol, t) && t.bid > 0)
+   {
+      if(t.bid != g_lastSlowBid || t.ask != g_lastSlowAsk)
+      { g_lastSlowBid = t.bid; g_lastSlowAsk = t.ask; g_lastSlowChange = now; }
+      PushS(now, t.bid, t.ask);
+   }
+
+   ReadFeed();
+
+   // model refresh (throttled)
+   if(now - g_lastModelMs >= 100){ UpdateModel(now); g_lastModelMs = now; }
+
+   // state machine
+   switch(g_state)
+   {
+      case LA_CALIB:
+         if(g_modelN >= InpMinSamples && g_sd > 0){ g_state = LA_READY; Print("Calibration complete: mu=", g_mu, " sd=", g_sd); }
+         break;
+
+      case LA_READY:
+         if(g_modelN < InpMinSamples*8/10){ g_state = LA_CALIB; break; }
+         {
+            string why;
+            if(!FeedsHealthy(why) || !SessionOK() || FastSpike(now)) break;
+            if(now - g_lastClose < (ulong)InpCooldownSec*1000) break;
+            double gap=0, z=0;
+            int dir = 0;
+            if(SignalFor( 1, gap, z)) dir =  1;
+            else if(SignalFor(-1, gap, z)) dir = -1;
+            if(dir != 0)
+            {
+               g_candDir = dir; g_candStart = now; g_candSeq0 = g_lastSeq;
+               g_candUpd = 0; g_candGap = gap; g_candZ = z; g_state = LA_CAND;
+               if(InpVerboseLog) Print("CANDIDATE armed dir=", dir, " gap=", gap, " z=", z);
+            }
+         }
+         break;
+
+      case LA_CAND:
+         if(g_lastSeq != g_candSeq0){ g_candUpd++; g_candSeq0 = g_lastSeq; }
+         {
+            double gap=0, z=0;
+            if(!SignalFor(g_candDir, gap, z)) { CancelCandidate("conditions gone"); break; }
+            g_candGap = gap; g_candZ = z;
+            if(now - g_candStart >= (ulong)InpPersistMs && g_candUpd >= InpPersistUpdates)
+               TryEnter(now);
+         }
+         break;
+
+      case LA_TRADE:  ManageTrade(now); break;
+
+      case LA_COOL:
+         if(now - g_lastClose >= (ulong)InpCooldownSec*1000)
+            g_state = (g_modelN >= InpMinSamples) ? LA_READY : LA_CALIB;
+         break;
+
+      case LA_HALT: break;   // requires manual restart (or day roll for daily stop)
+   }
+
+   // panel
+   if(now - g_lastPanelMs >= (ulong)InpPanelRefreshMs)
+   {
+      g_lastPanelMs = now;
+      string stName[6] = {"CALIBRATING","READY","CANDIDATE","IN_TRADE","COOLDOWN","HALTED"};
+      string why = "";
+      double fSpread = (g_fCount>0) ? (FastAsk()-FastBid())/g_point : 0;
+      double sSpread = (g_sCount>0) ? (SlowAsk()-SlowBid())/g_point : 0;
+      double d = (g_fCount>0 && g_sCount>0) ? FastMid()-SlowMid() : 0;
+      double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+      double gapB = (g_fCount>0 && g_sCount>0) ? (FastBid()-g_mu-SlowAsk())/g_point : 0;
+      double gapS = (g_fCount>0 && g_sCount>0) ? (SlowBid()-(FastAsk()-g_mu))/g_point : 0;
+      string s;
+      s += "====== EA_Exec — latency-arb research kit ======\n";
+      s += StringFormat("STATE: %s%s%s\n", stName[g_state],
+                        (g_halt!="") ? ("  HALT: "+g_halt) : "",
+                        (g_note!="") ? ("\n"+g_note) : "");
+      s += StringFormat("TRADING: %s   symbol=%s   fastFeed=%s\n",
+                        InpTradingEnabled ? "ENABLED" : "OFF (observer)", _Symbol, g_fastName);
+      s += StringFormat("FEED fast: bid/ask=%s/%s spr=%.1fpts age=%ums\n",
+                        g_fCount>0?DoubleToString(FastBid(),_Digits):"-",
+                        g_fCount>0?DoubleToString(FastAsk(),_Digits):"-",
+                        fSpread, g_fCount>0?(uint)(now-g_f[g_fHead].ms):0);
+      s += StringFormat("FEED slow: bid/ask=%s/%s spr=%.1fpts flatAge=%ums\n",
+                        g_sCount>0?DoubleToString(SlowBid(),_Digits):"-",
+                        g_sCount>0?DoubleToString(SlowAsk(),_Digits):"-",
+                        sSpread, (uint)(now-g_lastSlowChange));
+      s += StringFormat("MODEL: d=%.5f  mu=%.5f  sd=%.5f  z=%.2f  samples=%d/%d\n",
+                        d, g_mu, g_sd, (g_sd>0)?(d-g_mu)/MathMax(g_sd,InpSigmaFloorPts*g_point):0,
+                        g_modelN, InpMinSamples);
+      s += StringFormat("GAPS: buy=%+.1fpts  sell=%+.1fpts  need>=%.1f (net) +%.1f cost buffer\n",
+                        gapB, gapS, InpMinNetEdgePts, InpCostBufferPts);
+      s += StringFormat("RISK: equity=%.2f  dayPL=%.2f  tradesToday=%d/%d  openPL=%.2f  fails=%d\n",
+                        eq, DayRealizedPL()+FloatingPL(), g_tradesToday, InpMaxTradesPerDay,
+                        FloatingPL(), g_fails);
+      if(g_state == LA_CAND)
+         s += StringFormat("CANDIDATE: dir=%s  survived=%ums/%d updates (need %ums/%d)\n",
+                           g_candDir>0?"BUY":"SELL", (uint)(now-g_candStart), g_candUpd,
+                           InpPersistMs, InpPersistUpdates);
+      Comment(s);
+   }
+}</script>
+    </div>
+  </section>
+
+  <section id="uji">
+    <div class="wrap">
+      <h2 class="sec-title">Urutan uji sebelum uang sungguhan</h2>
+      <p class="sec-sub">Urutannya wajib, karena setiap tahap bisa menghentikan proyek ini tanpa kerugian.</p>
+      <div class="steps">
+        <div class="st"><h4>Logger</h4><span class="when">minggu 1 sampai 2</span><p>Trading dimatikan. Baca panel: apakah μ dan σ stabil, seberapa sering z melewati 3,5, dan apakah selisih masih ada setelah buffer biaya.</p></div>
+        <div class="st"><h4>Demo</h4><span class="when">minggu 3 sampai 4</span><p>Aktifkan di akun demo kedua broker. Catat median dan persentil 95 slippage nyata, lalu sesuaikan buffer biaya.</p></div>
+        <div class="st"><h4>Izin tertulis</h4><span class="when">sebelum live</span><p>Baca perjanjian entitas hukum broker sisi eksekusi dan minta posisi mereka secara tertulis.</p></div>
+        <div class="st"><h4>Live mini</h4><span class="when">terakhir</span><p>Hanya dengan modal yang siap hilang seluruhnya, dan hanya jika tahap sebelumnya lolos.</p></div>
+      </div>
+      <div class="stop"><b>Titik berhenti yang sah:</b> kalau di tahap logger sinyal valid jarang muncul, pasangan broker itu tidak layak. Berhenti di situ berarti tidak ada modal yang hilang.</div>
+    </div>
+  </section>
+
+  <section id="batas">
+    <div class="wrap">
+      <div class="limits">
+        <h2>Batas dan risiko yang saya tulis terang-terangan</h2>
+        <ul>
+          <li><b>Ini kit riset, bukan mesin uang.</b> Tidak ada angka keuntungan bulanan yang bisa saya pertanggungjawabkan, jadi saya tidak menampilkannya.</li>
+          <li><b>Broker bisa menolak.</b> Banyak laporan akun dibatasi atau profit dibatalkan. Kebijakan tiap broker dan tiap entitas hukum berbeda, jadi cek perjanjian akun kamu sendiri.</li>
+          <li><b>Tidak ada fitur penyamaran.</b> Batas trade per hari dan jeda antar trade ada untuk disiplin risiko dan kualitas eksekusi, bukan untuk menghindari pemantauan broker.</li>
+          <li><b>Aturan prop firm berbeda.</b> Beberapa melarang eksploitasi harga tertunda dan posisi terkoordinasi antar akun.</li>
+          <li><b>Kondisi berubah.</b> Broker yang lambat hari ini bisa memperbaiki feed-nya besok, dan edge-nya hilang.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="sumber">
+    <div class="wrap">
+      <h2 class="sec-title">Sumber riset</h2>
+      <p class="sec-sub">Tempat saya belajar. Diskusi forum adalah pengalaman perorangan, bukan bukti terverifikasi.</p>
+      <div class="sources">
+        <a href="https://www.mql5.com/en/forum/436746" target="_blank" rel="noopener"><b>MQL5: Latency Arbitrage, Easy Trading Strategy</b><span>Biaya membunuh edge, dan broker lambat pun butuh spread ketat.</span></a>
+        <a href="https://www.mql5.com/en/forum/455692" target="_blank" rel="noopener"><b>MQL5: Do Brokers Allow Statistical Arbitrage</b><span>Legal secara umum belum tentu diizinkan oleh syarat broker.</span></a>
+        <a href="https://www.mql5.com/en/forum/162405" target="_blank" rel="noopener"><b>MQL5: diskusi dua platform</b><span>Broker bisa mengenali pola aliran order.</span></a>
+        <a href="https://www.mql5.com/en/forum/454289" target="_blank" rel="noopener"><b>MQL5: delay eksekusi lewat VPS</b><span>Ping di bawah 1 ms, tetapi order tetap terlambat.</span></a>
+        <a href="https://www.mql5.com/en/docs/constants/structures/mqltick" target="_blank" rel="noopener"><b>Dokumentasi MQL5: MqlTick dan CopyTicks</b><span>Field time_msc dan sifat OnTick yang bisa menggabungkan tick.</span></a>
+        <a href="https://www.mql5.com/en/articles/115" target="_blank" rel="noopener"><b>Artikel MQL5: named pipe antar terminal</b><span>Alternatif transport yang lebih cepat dari file.</span></a>
+        <a href="https://www.quantpedia.com/working-with-high-frequency-tick-data-cleaning-the-data/" target="_blank" rel="noopener"><b>QuantPedia: membersihkan tick data</b><span>Filter yang terlalu ketat bisa membuang gerakan valid.</span></a>
+        <a href="https://liquidityfinder.com/insight/other/latency-arbitragein-forex-trading-easy-profits-not-really" target="_blank" rel="noopener"><b>LiquidityFinder: Latency Arbitrage in Forex</b><span>Sudut pandang industri soal pemantauan aliran order.</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><strong>Danz_fx</strong>, <span id="yr"></span>. Materi edukasi dan dokumentasi riset pribadi, bukan saran investasi.</div>
+</footer>
+
+<script>
+(function(){
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Status sistem ---------- */
+  var S = [
+    ['CALIBRATING','Sistem mengumpulkan selisih d = mid_cepat − mid_lambat dalam jendela 180 detik. Trading belum boleh sampai terkumpul minimal 300 sampel dengan σ lebih dari nol.'],
+    ['READY','Memantau tanpa henti. Setiap update, gap beli dan gap jual dihitung dari harga bid/ask. Kandidat muncul jika |z| ≥ 3,5 dan gap ≥ 15 poin, sementara semua filter kesehatan feed lolos.'],
+    ['CANDIDATE','Peluang baru terlihat, belum dipercaya. Ia harus bertahan minimal 250 ms dan melewati minimal 3 update feed cepat berbeda. Kalau kondisi hilang, kandidat dibatalkan. Kalau trading dimatikan, sinyal valid hanya dicatat di panel.'],
+    ['IN_TRADE','Satu posisi per simbol, dengan stop loss keras dan batas slippage. Keluar saat selisih menyempit, z kembali di bawah 1, waktu tahan 45 detik habis, feed hilang, atau penjaga risiko aktif.'],
+    ['COOLDOWN','Jeda 20 detik setelah posisi tertutup, lalu kembali ke READY jika model masih punya cukup sampel, atau ke CALIBRATING jika tidak.'],
+    ['HALTED','Berhenti total karena penjaga equity 10% tersentuh, rugi harian melewati 2%, atau tiga order gagal beruntun. Penjaga equity butuh restart manual. Batas rugi harian dibuka lagi saat hari baru.']
+  ];
+  var btns = document.querySelectorAll('#states button'), det = document.getElementById('stateDetail');
+  function showState(i){
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.s == i ? 'true':'false'); });
+    det.innerHTML = '<b class="mono">'+S[i][0]+'</b><p>'+S[i][1]+'</p>';
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ showState(+b.dataset.s); }); });
+  showState(0);
+
+  /* ---------- Tab kode ---------- */
+  var meta = {
+    feed:{file:'EA_Feed.mq5', desc:'Sisi broker cepat. Membaca bid/ask dan menyiarkannya lewat file snapshot atomik. Tidak membuka order.'},
+    exec:{file:'EA_Exec.mq5', desc:'Sisi broker lambat. Kalibrasi otomatis, sinyal z-score, filter kualitas, state machine, manajemen risiko, dan panel di chart. InpTradingEnabled bernilai false secara default.'}
+  };
+  var tabs = document.querySelectorAll('.tabs button'), cur = 'feed';
+  var copyBtn = document.getElementById('copyBtn'), dl = document.getElementById('dlBtn');
+  function lines(k){ return document.getElementById('src-'+k).textContent.split('\n').length; }
+  function setTab(k){
+    cur = k;
+    tabs.forEach(function(t){ t.setAttribute('aria-selected', t.dataset.t===k ? 'true':'false'); });
+    document.getElementById('pane-feed').hidden = k!=='feed';
+    document.getElementById('pane-exec').hidden = k!=='exec';
+    document.getElementById('codeDesc').textContent = meta[k].desc;
+    document.getElementById('codeMeta').textContent = lines(k)+' baris';
+    dl.setAttribute('href', meta[k].file); dl.setAttribute('download', meta[k].file);
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ setTab(t.dataset.t); }); });
+  setTab('feed');
+  copyBtn.addEventListener('click', function(){
+    var txt = document.getElementById('src-'+cur).textContent;
+    function ok(){ copyBtn.textContent = 'Tersalin'; setTimeout(function(){ copyBtn.textContent = 'Salin'; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(ok, fallback); }
+    else fallback();
+    function fallback(){
+      var ta = document.createElement('textarea'); ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); ok(); }catch(e){ copyBtn.textContent = 'Gagal, salin manual'; }
+      document.body.removeChild(ta);
+    }
+  });
+
+  /* ---------- Simulasi dua feed dengan latensi ---------- */
+  var cv = document.getElementById('chart'), ctx = cv.getContext('2d');
+  var slider = document.getElementById('lat');
+  var rLat = document.getElementById('rLat'), latVal = document.getElementById('latVal');
+  var rSpread = document.getElementById('rSpread'), rSignal = document.getElementById('rSignal');
+  var W, H, dpr, N = 220, STEP_MS = 1000/60, MAXLAG = Math.ceil(400/STEP_MS)+2, hist = [], price = 100;
+
+  function resize(){
+    dpr = window.devicePixelRatio || 1;
+    var r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = W*dpr; cv.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function step(){
+    var last = hist.length ? hist[hist.length-1] : price;
+    var prev = hist.length > 1 ? hist[hist.length-2] : last;
+    price = last + (last-prev)*0.82 + (Math.random()-0.5)*0.55;
+    price += (100-price)*0.004;
+    hist.push(price);
+    if (hist.length > N+MAXLAG+5) hist.shift();
+  }
+  for (var i=0;i<N+MAXLAG+5;i++) step();
+
+  function draw(){
+    var lag = Math.round(+slider.value/STEP_MS), len = hist.length;
+    var A = hist.slice(len-N), B = [];
+    for (var i=0;i<N;i++) B.push(hist[len-N+i-lag]);
+    var all = A.concat(B), mn = Math.min.apply(null,all), mx = Math.max.apply(null,all);
+    var pad = (mx-mn)*0.15+0.2; mn -= pad; mx += pad;
+    function X(i){ return i/(N-1)*W; }
+    function Y(v){ return H-(v-mn)/(mx-mn)*H; }
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(147,160,198,.08)'; ctx.lineWidth = 1;
+    for (var g=1; g<5; g++){ ctx.beginPath(); ctx.moveTo(0,H*g/5); ctx.lineTo(W,H*g/5); ctx.stroke(); }
+    ctx.beginPath();
+    for (i=0;i<N;i++) ctx.lineTo(X(i),Y(A[i]));
+    for (i=N-1;i>=0;i--) ctx.lineTo(X(i),Y(B[i]));
+    ctx.closePath(); ctx.fillStyle = 'rgba(251,191,36,.28)'; ctx.fill();
+    function line(arr,color){
+      ctx.beginPath();
+      for (var k=0;k<N;k++){ k?ctx.lineTo(X(k),Y(arr[k])):ctx.moveTo(X(k),Y(arr[k])); }
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+    }
+    line(B,'#A78BFA'); line(A,'#38BDF8');
+    [[A,'#38BDF8'],[B,'#A78BFA']].forEach(function(o){
+      ctx.beginPath(); ctx.arc(X(N-1)-3,Y(o[0][N-1]),4,0,7); ctx.fillStyle = o[1]; ctx.fill();
+    });
+    var diff = A[N-1]-B[N-1], ad = Math.abs(diff);
+    rSpread.textContent = ad.toFixed(2);
+    if (lag === 0){ rSignal.textContent = 'Tidak ada'; rSignal.style.color = 'var(--muted)'; }
+    else if (ad > 0.35){ rSignal.textContent = diff > 0 ? 'BELI' : 'JUAL'; rSignal.style.color = 'var(--ok)'; }
+    else { rSignal.textContent = 'Menunggu'; rSignal.style.color = 'var(--muted)'; }
+  }
+  slider.addEventListener('input', function(){
+    var t = slider.value+' ms'; rLat.textContent = t; latVal.textContent = t;
+    if (reduce) draw();
+  });
+  window.addEventListener('resize', function(){ resize(); draw(); });
+  resize(); draw();
+  if (!reduce) {
+    var running = true, acc = 0, lastT = performance.now();
+    new IntersectionObserver(function(e){ running = e[0].isIntersecting; }).observe(cv);
+    (function loop(t){
+      if (running){ acc += t-lastT; while (acc >= STEP_MS){ step(); acc -= STEP_MS; } draw(); }
+      lastT = t; requestAnimationFrame(loop);
+    })(lastT);
+  }
+})();
+</script>
+</body>
+</html>
